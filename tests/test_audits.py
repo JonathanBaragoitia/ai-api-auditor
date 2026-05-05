@@ -99,7 +99,7 @@ def test_get_audits_returns_list():
     with TestClient(app) as client:
         headers = get_auth_headers(client)
         create_response = client.post("/audits/manual", json=payload, headers=headers)
-        list_response = client.get("/audits/")
+        list_response = client.get("/audits/", headers=headers)
 
     assert create_response.status_code == 201
     assert list_response.status_code == 200

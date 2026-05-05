@@ -40,7 +40,10 @@ def parse_audit(audit: Audit) -> AuditResponse:
 
 
 @router.get("/", response_model=list[AuditResponse])
-def get_audits(db: Session = Depends(get_db)):
+def get_audits(
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
     audits = db.query(Audit).order_by(Audit.created_at.desc()).all()
     return [parse_audit(audit) for audit in audits]
 
@@ -165,6 +168,9 @@ def create_openapi_audit(
 
 
 @router.get("/history")
-def get_history(db: Session = Depends(get_db)):
+def get_history(
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
     audits = db.query(Audit).order_by(Audit.created_at.desc()).all()
     return [parse_audit(audit) for audit in audits]
