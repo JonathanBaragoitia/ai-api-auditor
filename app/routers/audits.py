@@ -3,8 +3,10 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.dependencies.auth import get_current_user
 from app.db.database import get_db
 from app.models.audit import Audit
+from app.models.user import User
 from app.services.audit_service import analyze_manual_audit
 from app.services.ai_service import analyze_with_ollama
 from app.services.openapi_service import analyze_openapi_schema, calculate_global_audit_result
@@ -54,7 +56,11 @@ def get_audit(audit_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/manual", response_model=AuditResponse, status_code=201)
-def create_manual_audit(data: ManualAuditRequest, db: Session = Depends(get_db)):
+def create_manual_audit(
+    data: ManualAuditRequest,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
     analysis = analyze_manual_audit(data)
 
     audit = Audit(
@@ -141,7 +147,10 @@ def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_d
 
 
 @router.post("/openapi", response_model=OpenAPIAuditResponse)
-def create_openapi_audit(data: OpenAPIAuditRequest):
+def create_openapi_audit(
+    data: OpenAPIAuditRequest,
+    _current_user: User = Depends(get_current_user),
+):
     endpoint_results = analyze_openapi_schema(data.openapi_schema)
 
     average_score, global_risk_level = calculate_global_audit_result(endpoint_results)

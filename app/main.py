@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.init_db import init_db
-from app.routers import audits
+from app.routers import audits, auth
 
 app = FastAPI(
     title="AI API Auditor",
@@ -24,6 +24,7 @@ def startup():
 
 
 app.include_router(audits.router)
+app.include_router(auth.router)
 
 
 @app.get("/health")

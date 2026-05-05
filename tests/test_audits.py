@@ -36,6 +36,18 @@ def teardown_function():
     app.dependency_overrides.clear()
 
 
+def get_auth_headers(client: TestClient) -> dict:
+    register_payload = {
+        "email": "test@example.com",
+        "password": "test1234",
+    }
+    register_response = client.post("/auth/register", json=register_payload)
+    assert register_response.status_code == 201
+
+    token = register_response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_health_returns_ok():
     app.dependency_overrides[get_db] = override_get_db
 
@@ -60,7 +72,8 @@ def test_create_manual_audit_success():
     }
 
     with TestClient(app) as client:
-        response = client.post("/audits/manual", json=payload)
+        headers = get_auth_headers(client)
+        response = client.post("/audits/manual", json=payload, headers=headers)
 
     data = response.json()
     assert response.status_code == 201
@@ -84,7 +97,8 @@ def test_get_audits_returns_list():
     }
 
     with TestClient(app) as client:
-        create_response = client.post("/audits/manual", json=payload)
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/manual", json=payload, headers=headers)
         list_response = client.get("/audits/")
 
     assert create_response.status_code == 201
@@ -127,7 +141,8 @@ def test_openapi_audit_returns_total_endpoints(monkeypatch):
     }
 
     with TestClient(app) as client:
-        response = client.post("/audits/openapi", json=payload)
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
 
     data = response.json()
     assert response.status_code == 200
