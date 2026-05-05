@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AuditForm from "./components/AuditForm";
 import HistoryList from "./components/HistoryList";
 import LoginForm from "./components/LoginForm";
@@ -82,20 +82,35 @@ function App() {
     return "#94a3b8";
   };
 
-  const loadHistory = async () => {
+  const handleLogout = useCallback(() => {
+    setToken(null);
+    localStorage.removeItem("token");
+    setResult(null);
+    setHistory([]);
+    setError(null);
+    setSuccess(null);
+  }, []);
+
+  const loadHistory = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
     try {
       const data = await apiFetch(`${API_BASE_URL}/audits/`, {}, token, handleLogout);
       setHistory(data);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [token, handleLogout]);
 
   useEffect(() => {
-    if (token) {
+    const timer = setTimeout(() => {
       loadHistory();
-    }
-  }, [token]);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [loadHistory]);
 
   const handleLogin = async ({ email, password }) => {
     const data = await apiFetch(`${API_BASE_URL}/auth/login`, {
@@ -123,15 +138,6 @@ function App() {
 
     setToken(data.access_token);
     localStorage.setItem("token", data.access_token);
-  };
-
-  const handleLogout = () => {
-    setToken(null);
-    localStorage.removeItem("token");
-    setResult(null);
-    setHistory([]);
-    setError(null);
-    setSuccess(null);
   };
 
   const handleAnalyze = async () => {

@@ -20,10 +20,11 @@ export async function apiFetch(url, options = {}, token, onLogout) {
     throw new Error("Sesión expirada");
   }
 
-  let data = null;
+  let data;
   try {
     data = await response.json();
-  } catch (_err) {
+  } catch (err) {
+    console.error(err);
     data = null;
   }
 
