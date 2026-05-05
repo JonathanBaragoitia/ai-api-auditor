@@ -1,10 +1,11 @@
 import { useState } from "react";
 
-function LoginForm({ onLogin, inputStyle, buttonStyle }) {
+function LoginForm({ onLogin, onRegister, inputStyle, buttonStyle }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -12,13 +13,26 @@ function LoginForm({ onLogin, inputStyle, buttonStyle }) {
     setError(null);
 
     try {
-      await onLogin({ email, password });
+      if (isRegisterMode) {
+        await onRegister({ email, password });
+      } else {
+        await onLogin({ email, password });
+      }
     } catch (err) {
       console.error(err);
-      setError("Credenciales inválidas o servidor no disponible");
+      setError(
+        isRegisterMode
+          ? "No se pudo crear la cuenta"
+          : "Credenciales inválidas o servidor no disponible",
+      );
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleMode = () => {
+    setIsRegisterMode((prev) => !prev);
+    setError(null);
   };
 
   return (
@@ -40,7 +54,11 @@ function LoginForm({ onLogin, inputStyle, buttonStyle }) {
       />
 
       <button type="submit" style={buttonStyle}>
-        {loading ? "Entrando..." : "Iniciar sesión"}
+        {loading ? "Procesando..." : isRegisterMode ? "Crear cuenta" : "Iniciar sesión"}
+      </button>
+
+      <button type="button" style={buttonStyle} onClick={toggleMode}>
+        {isRegisterMode ? "Volver a login" : "Crear cuenta"}
       </button>
 
       {error && <p>{error}</p>}

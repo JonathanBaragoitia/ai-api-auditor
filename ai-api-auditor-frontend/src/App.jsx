@@ -114,6 +114,32 @@ function App() {
     localStorage.setItem("token", data.access_token);
   };
 
+  const handleRegister = async ({ email, password }) => {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.access_token) {
+      throw new Error("Register failed");
+    }
+
+    setToken(data.access_token);
+    localStorage.setItem("token", data.access_token);
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    localStorage.removeItem("token");
+    setResult(null);
+    setHistory([]);
+    setError(null);
+    setSuccess(null);
+  };
+
   const handleAnalyze = async () => {
     setLoading(true);
     setError(null);
@@ -156,9 +182,18 @@ function App() {
         <h1 style={title}>Auditor de APIs con IA</h1>
 
         {!token ? (
-          <LoginForm onLogin={handleLogin} inputStyle={inputField} buttonStyle={button} />
+          <LoginForm
+            onLogin={handleLogin}
+            onRegister={handleRegister}
+            inputStyle={inputField}
+            buttonStyle={button}
+          />
         ) : (
           <>
+            <button onClick={handleLogout} style={button}>
+              Cerrar sesión
+            </button>
+
             <AuditForm
               input={input}
               onInputChange={setInput}
