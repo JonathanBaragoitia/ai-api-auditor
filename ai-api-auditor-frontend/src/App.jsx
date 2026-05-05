@@ -152,11 +152,11 @@ function App() {
       const data = await apiFetch(
         `${API_BASE_URL}/audits/openapi`,
         {
-        method: "POST",
-        body: JSON.stringify({
-          name: "Frontend Audit",
-          openapi_schema: parsed,
-        }),
+          method: "POST",
+          body: JSON.stringify({
+            name: "Frontend Audit",
+            openapi_schema: parsed,
+          }),
         },
         token,
         handleLogout,
@@ -171,6 +171,24 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportResult = () => {
+    if (!result) {
+      return;
+    }
+
+    const jsonContent = JSON.stringify(result, null, 2);
+    const blob = new Blob([jsonContent], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "auditoria-api.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -205,6 +223,10 @@ function App() {
             {/* RESULTADO */}
             {result && (
               <>
+                <button onClick={handleExportResult} style={button}>
+                  Exportar resultado JSON
+                </button>
+
                 <SummaryCards
                   result={result}
                   getRiskLabel={getRiskLabel}
