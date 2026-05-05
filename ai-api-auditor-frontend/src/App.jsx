@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AuditForm from "./components/AuditForm";
 import HistoryList from "./components/HistoryList";
+import LoginForm from "./components/LoginForm";
 import ResultsPanel from "./components/ResultsPanel";
 import SummaryCards from "./components/SummaryCards";
 
@@ -71,6 +72,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem("token"));
 
   const getColor = (risk) => {
     if (risk === "low") return "#22c55e";
@@ -90,8 +92,27 @@ function App() {
   };
 
   useEffect(() => {
-    loadHistory();
-  }, []);
+    if (token) {
+      loadHistory();
+    }
+  }, [token]);
+
+  const handleLogin = async ({ email, password }) => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.access_token) {
+      throw new Error("Login failed");
+    }
+
+    setToken(data.access_token);
+    localStorage.setItem("token", data.access_token);
+  };
 
   const handleAnalyze = async () => {
     setLoading(true);
@@ -104,7 +125,10 @@ function App() {
 
       const res = await fetch(`${API_BASE_URL}/audits/openapi`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           name: "Frontend Audit",
           openapi_schema: parsed,
@@ -131,50 +155,56 @@ function App() {
       <div style={container}>
         <h1 style={title}>Auditor de APIs con IA</h1>
 
-        <AuditForm
-          input={input}
-          onInputChange={setInput}
-          onAnalyze={handleAnalyze}
-          loading={loading}
-          error={error}
-          success={success}
-          textareaStyle={textarea}
-          buttonStyle={button}
-        />
-
-        {/* RESULTADO */}
-        {result && (
+        {!token ? (
+          <LoginForm onLogin={handleLogin} inputStyle={inputField} buttonStyle={button} />
+        ) : (
           <>
-            <SummaryCards
-              result={result}
-              getRiskLabel={getRiskLabel}
-              getColor={getColor}
-              statsStyle={stats}
-              miniCardStyle={miniCard}
+            <AuditForm
+              input={input}
+              onInputChange={setInput}
+              onAnalyze={handleAnalyze}
+              loading={loading}
+              error={error}
+              success={success}
+              textareaStyle={textarea}
+              buttonStyle={button}
             />
-            <ResultsPanel
-              result={result}
+
+            {/* RESULTADO */}
+            {result && (
+              <>
+                <SummaryCards
+                  result={result}
+                  getRiskLabel={getRiskLabel}
+                  getColor={getColor}
+                  statsStyle={stats}
+                  miniCardStyle={miniCard}
+                />
+                <ResultsPanel
+                  result={result}
+                  sectionStyle={section}
+                  cardStyle={card}
+                  rowStyle={row}
+                  getFriendlyEndpointName={getFriendlyEndpointName}
+                  getColor={getColor}
+                  getRiskLabel={getRiskLabel}
+                  translate={translate}
+                />
+              </>
+            )}
+
+            <HistoryList
+              history={history}
               sectionStyle={section}
               cardStyle={card}
               rowStyle={row}
-              getFriendlyEndpointName={getFriendlyEndpointName}
+              translate={translate}
               getColor={getColor}
               getRiskLabel={getRiskLabel}
-              translate={translate}
+              getFriendlyEndpointName={getFriendlyEndpointName}
             />
           </>
         )}
-
-        <HistoryList
-          history={history}
-          sectionStyle={section}
-          cardStyle={card}
-          rowStyle={row}
-          translate={translate}
-          getColor={getColor}
-          getRiskLabel={getRiskLabel}
-          getFriendlyEndpointName={getFriendlyEndpointName}
-        />
       </div>
     </div>
   );
@@ -205,6 +235,16 @@ const textarea = {
   background: "#1e293b",
   color: "white",
   borderRadius: 10,
+};
+
+const inputField = {
+  width: "100%",
+  marginTop: 20,
+  padding: 12,
+  background: "#1e293b",
+  color: "white",
+  borderRadius: 10,
+  border: "1px solid #334155",
 };
 
 const button = {
