@@ -58,11 +58,15 @@ const getFriendlyEndpointName = (path) => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
 function App() {
   const [input, setInput] = useState("");
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   const getColor = (risk) => {
     if (risk === "low") return "#22c55e";
@@ -73,7 +77,7 @@ function App() {
 
   const loadHistory = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/audits/");
+      const res = await fetch(`${API_BASE_URL}/audits/`);
       const data = await res.json();
       setHistory(data);
     } catch (e) {
@@ -87,12 +91,14 @@ function App() {
 
   const handleAnalyze = async () => {
     setLoading(true);
+    setError(null);
+    setSuccess(null);
     setResult(null);
 
     try {
       const parsed = JSON.parse(input);
 
-      const res = await fetch("http://127.0.0.1:8000/audits/openapi", {
+      const res = await fetch(`${API_BASE_URL}/audits/openapi`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106,13 +112,14 @@ function App() {
       if (!res.ok) throw new Error();
 
       setResult(data);
+      setSuccess("Análisis completado correctamente");
       loadHistory();
     } catch (err) {
       console.error(err);
-      alert("❌ JSON inválido o backend apagado");
+      setError("Error al analizar la API");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -130,6 +137,10 @@ function App() {
         <button onClick={handleAnalyze} style={button}>
           {loading ? "Analizando..." : "🚀 Analizar API"}
         </button>
+
+        {loading && <p>Analizando...</p>}
+        {error && <p>{error}</p>}
+        {success && <p>{success}</p>}
 
         {/* RESULTADO */}
         {result && (
