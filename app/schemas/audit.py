@@ -38,6 +38,8 @@ class AuditResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
 class OpenAPIAuditRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=150)
     openapi_schema: dict[str, Any]

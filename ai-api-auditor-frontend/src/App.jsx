@@ -108,6 +108,7 @@ function App() {
       setResult(data);
       loadHistory();
     } catch (err) {
+      console.error(err);
       alert("❌ JSON inválido o backend apagado");
     }
 

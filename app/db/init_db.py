@@ -1,5 +1,5 @@
 from app.db.database import Base, engine
-from app.models.audit import Audit
+from app.models.audit import Audit  # noqa: F401
 
 
 def init_db():

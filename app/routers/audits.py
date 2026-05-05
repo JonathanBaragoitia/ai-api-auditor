@@ -91,6 +91,8 @@ def ai_test():
     result = analyze_with_ollama(prompt)
 
     return result
+
+
 @router.post("/manual-ai", response_model=AuditResponse, status_code=201)
 def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_db)):
     prompt = f"""
@@ -137,6 +139,7 @@ def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_d
 
     return parse_audit(audit)
 
+
 @router.post("/openapi", response_model=OpenAPIAuditResponse)
 def create_openapi_audit(data: OpenAPIAuditRequest):
     endpoint_results = analyze_openapi_schema(data.openapi_schema)
@@ -150,6 +153,8 @@ def create_openapi_audit(data: OpenAPIAuditRequest):
         global_risk_level=global_risk_level,
         endpoints=endpoint_results,
     )
+
+
 @router.get("/history")
 def get_history(db: Session = Depends(get_db)):
     audits = db.query(Audit).order_by(Audit.created_at.desc()).all()
