@@ -32,7 +32,7 @@ jobs:
           python -c "import pathlib, py_compile; [py_compile.compile(str(p), doraise=True) for p in pathlib.Path('app').rglob('*.py')]; print('Python syntax OK')"
 
       - name: Lint backend (flake8)
-        run: flake8 app/ --max-line-length=120 --extend-ignore=E203,W503
+        run: python -m flake8 app/ --max-line-length=120 --extend-ignore=E203,W503
 
       - name: Verify backend import
         run: python -c "from app.main import app; print(app.title)"
@@ -40,7 +40,7 @@ jobs:
       - name: Run pytest if tests exist
         run: |
           if [ -d tests ] && find tests -type f -name "test_*.py" | grep -q .; then
-            pytest
+            python -m pytest
           else
             echo "No pytest tests found, skipping."
           fi
