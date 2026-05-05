@@ -4,6 +4,7 @@ import HistoryList from "./components/HistoryList";
 import LoginForm from "./components/LoginForm";
 import ResultsPanel from "./components/ResultsPanel";
 import SummaryCards from "./components/SummaryCards";
+import { apiFetch } from "./utils/api";
 
 const translate = (text) => {
   if (!text) return text;
@@ -83,8 +84,7 @@ function App() {
 
   const loadHistory = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/audits/`);
-      const data = await res.json();
+      const data = await apiFetch(`${API_BASE_URL}/audits/`, {}, token, handleLogout);
       setHistory(data);
     } catch (e) {
       console.error(e);
@@ -98,15 +98,12 @@ function App() {
   }, [token]);
 
   const handleLogin = async ({ email, password }) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const data = await apiFetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok || !data.access_token) {
+    if (!data?.access_token) {
       throw new Error("Login failed");
     }
 
@@ -115,15 +112,12 @@ function App() {
   };
 
   const handleRegister = async ({ email, password }) => {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const data = await apiFetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok || !data.access_token) {
+    if (!data?.access_token) {
       throw new Error("Register failed");
     }
 
@@ -149,21 +143,18 @@ function App() {
     try {
       const parsed = JSON.parse(input);
 
-      const res = await fetch(`${API_BASE_URL}/audits/openapi`, {
+      const data = await apiFetch(
+        `${API_BASE_URL}/audits/openapi`,
+        {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: "Frontend Audit",
           openapi_schema: parsed,
         }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error();
+        },
+        token,
+        handleLogout,
+      );
 
       setResult(data);
       setSuccess("Análisis completado correctamente");
