@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import AuditForm from "./components/AuditForm";
+import HistoryList from "./components/HistoryList";
+import ResultsPanel from "./components/ResultsPanel";
+import SummaryCards from "./components/SummaryCards";
 
 const translate = (text) => {
   if (!text) return text;
@@ -127,137 +131,54 @@ function App() {
       <div style={container}>
         <h1 style={title}>Auditor de APIs con IA</h1>
 
-        <textarea
-          placeholder="Pega tu OpenAPI JSON aquí..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          style={textarea}
+        <AuditForm
+          input={input}
+          onInputChange={setInput}
+          onAnalyze={handleAnalyze}
+          loading={loading}
+          error={error}
+          success={success}
+          textareaStyle={textarea}
+          buttonStyle={button}
         />
-
-        <button onClick={handleAnalyze} style={button}>
-          {loading ? "Analizando..." : "🚀 Analizar API"}
-        </button>
-
-        {loading && <p>Analizando...</p>}
-        {error && <p>{error}</p>}
-        {success && <p>{success}</p>}
 
         {/* RESULTADO */}
         {result && (
           <>
-            <div style={stats}>
-              <Card title="Endpoints" value={result.total_endpoints} />
-              <Card title="Puntuación" value={result.average_score} />
-              <Card
-                title="Riesgo"
-                value={getRiskLabel(result.global_risk_level)}
-                color={getColor(result.global_risk_level)}
-              />
-            </div>
-
-            <h2 style={section}>Endpoints analizados</h2>
-
-            {result.endpoints.map((ep, i) => (
-              <div key={i} style={card}>
-                <div style={row}>
-                  <h3>{getFriendlyEndpointName(ep.path)}</h3>
-                  <span style={{ color: getColor(ep.risk_level) }}>
-                    {getRiskLabel(ep.risk_level)}
-                  </span>
-                </div>
-
-                <p><b>Resumen:</b> {translate(ep.summary)}</p>
-                <p><b>Puntuación:</b> {ep.score}</p>
-
-                {/* 🔥 PROBLEMAS */}
-                <h4>Problemas</h4>
-                {ep.issues.length > 0 ? (
-                  <ul>
-                    {ep.issues.map((x, j) => (
-                      <li key={j}>{translate(x)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p style={{ opacity: 0.6 }}>
-                    Sin problemas detectados
-                  </p>
-                )}
-
-                {/* 🔥 RECOMENDACIONES */}
-                <h4>Recomendaciones</h4>
-                {ep.recommendations.length > 0 ? (
-                  <ul>
-                    {ep.recommendations.map((x, j) => (
-                      <li key={j}>{translate(x)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p style={{ opacity: 0.6 }}>
-                    Sin recomendaciones
-                  </p>
-                )}
-              </div>
-            ))}
+            <SummaryCards
+              result={result}
+              getRiskLabel={getRiskLabel}
+              getColor={getColor}
+              statsStyle={stats}
+              miniCardStyle={miniCard}
+            />
+            <ResultsPanel
+              result={result}
+              sectionStyle={section}
+              cardStyle={card}
+              rowStyle={row}
+              getFriendlyEndpointName={getFriendlyEndpointName}
+              getColor={getColor}
+              getRiskLabel={getRiskLabel}
+              translate={translate}
+            />
           </>
         )}
 
-        {/* HISTORIAL */}
-        {history.length > 0 && (
-          <>
-            <h2 style={section}>Historial</h2>
-
-            {history.map((a) => (
-              <div key={a.id} style={card}>
-                <div style={row}>
-                  <h3>{translate(a.name)}</h3>
-                  <span style={{ color: getColor(a.risk_level) }}>
-                    {getRiskLabel(a.risk_level)}
-                  </span>
-                </div>
-
-                <p><b>{getFriendlyEndpointName(a.path)}</b></p>
-                <p>Puntuación: {a.score}</p>
-
-                <h4>Problemas</h4>
-                {a.issues.length > 0 ? (
-                  <ul>
-                    {a.issues.map((x, i) => (
-                      <li key={i}>{translate(x)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p style={{ opacity: 0.6 }}>
-                    Sin problemas detectados
-                  </p>
-                )}
-
-                <h4>Recomendaciones</h4>
-                {a.recommendations.length > 0 ? (
-                  <ul>
-                    {a.recommendations.map((x, i) => (
-                      <li key={i}>{translate(x)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p style={{ opacity: 0.6 }}>
-                    Sin recomendaciones
-                  </p>
-                )}
-              </div>
-            ))}
-          </>
-        )}
+        <HistoryList
+          history={history}
+          sectionStyle={section}
+          cardStyle={card}
+          rowStyle={row}
+          translate={translate}
+          getColor={getColor}
+          getRiskLabel={getRiskLabel}
+          getFriendlyEndpointName={getFriendlyEndpointName}
+        />
       </div>
     </div>
   );
 }
-
-const Card = ({ title, value, color }) => (
-  <div style={miniCard}>
-    <h3>{title}</h3>
-    <p style={{ fontSize: 28, color }}>{value}</p>
-  </div>
-);
 
 const page = {
   background: "#0f172a",
