@@ -1,0 +1,61 @@
+from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class ManualAuditRequest(BaseModel):
+    name: str = Field(..., min_length=3, max_length=150)
+    method: str = Field(..., examples=["GET", "POST", "PUT", "DELETE"])
+    path: str = Field(..., examples=["/users"])
+    description: str | None = None
+    auth_required: bool = False
+    request_example: dict[str, Any] | None = None
+    response_example: dict[str, Any] | None = None
+
+
+class AuditAnalysis(BaseModel):
+    score: float
+    risk_level: str
+    issues: list[str]
+    recommendations: list[str]
+
+
+class AuditResponse(BaseModel):
+    id: int
+    name: str
+    method: str
+    path: str
+    description: str | None
+    auth_required: bool
+    request_example: dict[str, Any] | None
+    response_example: dict[str, Any] | None
+    score: float
+    risk_level: str
+    issues: list[str]
+    recommendations: list[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+class OpenAPIAuditRequest(BaseModel):
+    name: str = Field(..., min_length=3, max_length=150)
+    openapi_schema: dict[str, Any]
+
+
+class OpenAPIEndpointAnalysis(BaseModel):
+    method: str
+    path: str
+    summary: str | None = None
+    score: float
+    risk_level: str
+    issues: list[str]
+    recommendations: list[str]
+
+
+class OpenAPIAuditResponse(BaseModel):
+    name: str
+    total_endpoints: int
+    average_score: float
+    global_risk_level: str
+    endpoints: list[OpenAPIEndpointAnalysis]
