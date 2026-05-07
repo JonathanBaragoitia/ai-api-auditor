@@ -2,6 +2,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user
@@ -189,9 +190,21 @@ def create_openapi_audit(
         openapi_endpoints=json.dumps(endpoints_data),
     )
 
-    db.add(audit)
-    db.commit()
-    db.refresh(audit)
+    try:
+        db.add(audit)
+        db.commit()
+        db.refresh(audit)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Failed to store OpenAPI audit. Check Alembic migrations and database schema.")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "No se pudo guardar la auditoría OpenAPI. "
+                "Revisa que la base de datos tenga las migraciones aplicadas con: python -m alembic upgrade head"
+            ),
+        ) from exc
+
     logger.info("OpenAPI audit stored: id=%s endpoints=%s", audit.id, len(endpoint_results))
 
     return OpenAPIAuditResponse(

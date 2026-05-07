@@ -128,19 +128,30 @@ def analyze_with_ollama(prompt: str) -> dict:
     }
 
     try:
+        logger.info(
+            "Sending request to Ollama: url=%s model=%s timeout=%s",
+            OLLAMA_URL,
+            OLLAMA_MODEL,
+            OLLAMA_TIMEOUT_SECONDS,
+        )
+        logger.debug("Ollama request payload keys=%s prompt_length=%s", list(payload.keys()), len(payload["prompt"]))
         response = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
+        logger.info("Ollama response status_code=%s", response.status_code)
+        logger.debug("Ollama response body preview=%s", response.text[:1000])
         response.raise_for_status()
     except requests.RequestException as exc:
-        logger.warning("Ollama request failed: %s", exc)
+        logger.warning("Ollama request failed: %s", exc, exc_info=True)
         return fallback_analysis(
             "No se pudo conectar con Ollama.",
             "Comprueba que Ollama está encendido y que el modelo está descargado.",
         )
 
     try:
-        raw_text = response.json().get("response", "")
+        response_data = response.json()
+        raw_text = response_data.get("response", "")
+        logger.debug("Ollama parsed response keys=%s response_length=%s", list(response_data.keys()), len(raw_text))
     except ValueError as exc:
-        logger.warning("Ollama returned a non-JSON HTTP response: %s", exc)
+        logger.warning("Ollama returned a non-JSON HTTP response: %s", exc, exc_info=True)
         return fallback_analysis(
             "Ollama devolvió una respuesta HTTP no válida.",
             "Revisar que Ollama y el modelo configurado estén funcionando correctamente.",
