@@ -91,6 +91,24 @@ python -m pytest
 
 Los tests usan una base SQLite en memoria para evitar afectar la base local de desarrollo.
 
+## Migraciones de base de datos
+
+El backend usa Alembic para gestionar cambios de esquema de forma versionada.
+
+Crear una nueva migración tras modificar modelos SQLAlchemy:
+
+```bash
+alembic revision --autogenerate -m "descripcion del cambio"
+```
+
+Aplicar migraciones pendientes:
+
+```bash
+alembic upgrade head
+```
+
+Alembic toma la conexión desde `DATABASE_URL` definida en `.env` o en `app/core/config.py`.
+
 ## Cómo funciona la autenticación
 
 1. El usuario se registra (`POST /auth/register`) o inicia sesión (`POST /auth/login`).

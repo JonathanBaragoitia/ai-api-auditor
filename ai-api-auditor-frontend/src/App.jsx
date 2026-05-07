@@ -84,6 +84,7 @@ function App() {
     auditSuccess,
     analyzeOpenAPI,
     exportResult,
+    exportPdfReport,
     clearAuditState,
   } = useAudits(token, logout);
 
@@ -126,6 +127,10 @@ function App() {
               <>
                 <button onClick={exportResult} style={button}>
                   Exportar resultado JSON
+                </button>
+
+                <button onClick={exportPdfReport} style={button}>
+                  Exportar informe PDF
                 </button>
 
                 <SummaryCards
