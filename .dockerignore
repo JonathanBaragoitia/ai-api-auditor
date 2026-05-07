@@ -1,0 +1,9 @@
+.git
+venv
+.venv
+__pycache__
+*.pyc
+ai_api_auditor.db
+.env
+ai-api-auditor-frontend/node_modules
+ai-api-auditor-frontend/dist

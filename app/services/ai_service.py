@@ -1,13 +1,14 @@
 import json
 import logging
+import os
 import re
 
 import requests
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3"
-OLLAMA_TIMEOUT_SECONDS = 60
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
+OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
 
 logger = logging.getLogger(__name__)
 

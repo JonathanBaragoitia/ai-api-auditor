@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: sqlite:///./ai_api_auditor.db
+      SECRET_KEY: change-me-in-production
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      CORS_ORIGINS: http://localhost:4173,http://127.0.0.1:4173
+      OLLAMA_URL: http://host.docker.internal:11434/api/generate
+      OLLAMA_MODEL: llama3
+      OLLAMA_TIMEOUT_SECONDS: 60
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./ai-api-auditor-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "4173:4173"
+    depends_on:
+      - backend

@@ -81,6 +81,21 @@ Configuración de entorno frontend:
 - Variable principal:
   - `VITE_API_BASE_URL=http://127.0.0.1:8000`
 
+## Cómo ejecutar con Docker Compose
+
+Desde la raíz del proyecto:
+
+```bash
+docker compose up --build
+```
+
+Servicios expuestos:
+
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:4173`
+
+Ollama no se levanta dentro de Docker Compose por ahora. Debe estar instalado y ejecutándose en la máquina local con el modelo configurado (por defecto `llama3`). El backend en Docker se conecta a Ollama mediante `host.docker.internal:11434`.
+
 ## Cómo ejecutar tests
 
 Desde la raíz del proyecto:
