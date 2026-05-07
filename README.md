@@ -1,48 +1,132 @@
 # Auditor de APIs con IA
 
-Aplicación full stack para evaluar la calidad técnica de APIs REST a partir de descripciones manuales o esquemas OpenAPI. El sistema analiza buenas prácticas de diseño, seguridad, documentación y consistencia, y devuelve una puntuación con nivel de riesgo, hallazgos y recomendaciones.
+Aplicación full stack para auditar APIs REST a partir de definiciones manuales o esquemas OpenAPI. El sistema analiza diseño, seguridad, documentación, paginación, validación y buenas prácticas, generando una puntuación, nivel de riesgo, problemas detectados y recomendaciones técnicas.
+
+El proyecto está pensado como una herramienta práctica para equipos backend y como muestra de arquitectura full stack, integración con IA local, autenticación, testing, CI/CD y DevOps básico.
 
 ## Funcionalidades principales
 
-- Auditoría manual de endpoints (`método`, `ruta`, `descripción`, ejemplos de request/response).
-- Auditoría automática de esquemas OpenAPI (análisis por endpoint y resultado global).
-- Historial de auditorías persistido en SQLite.
-- Autenticación básica con JWT (registro, login y protección de endpoints sensibles).
-- Interfaz web en React con flujo de autenticación, análisis y exportación de resultado en JSON.
-- Pipeline CI/CD con GitHub Actions para validación automática de backend y frontend.
+- Registro e inicio de sesión con JWT.
+- Auditoría manual de endpoints.
+- Auditoría automática de esquemas OpenAPI.
+- Análisis asistido por IA local usando Ollama.
+- Persistencia de auditorías en SQLite.
+- Historial con filtros por riesgo, búsqueda, puntuación mínima y ordenación.
+- Dashboard de métricas históricas.
+- Vista detalle de auditoría con endpoints, problemas y recomendaciones.
+- Exportación de resultados a JSON y PDF.
+- Tests backend y frontend.
+- CI/CD con GitHub Actions.
+- Docker Compose para ejecución local.
+- Migraciones con Alembic.
+- Hooks de pre-commit para control de calidad.
 
 ## Stack tecnológico
 
 - Backend: FastAPI, SQLAlchemy, Pydantic
-- Frontend: React + Vite
+- Frontend: React, Vite
 - Base de datos: SQLite
-- Autenticación: JWT + bcrypt/passlib
-- IA local: Ollama
+- Autenticación: JWT, bcrypt/passlib
+- IA local: Ollama (`llama3` por defecto)
+- Migraciones: Alembic
+- Testing backend: pytest
+- Testing frontend: Vitest, React Testing Library, jest-dom, jsdom
 - CI/CD: GitHub Actions
+- DevOps local: Docker, Docker Compose
+- Deploy: Render/Railway para backend, Vercel para frontend
 
-## Arquitectura (Frontend / Backend)
+## Arquitectura
 
-- `app/`: backend FastAPI
-  - `app/main.py`: arranque de aplicación y registro de routers
-  - `app/routers/`: endpoints (`audits`, `auth`)
-  - `app/services/`: lógica de análisis y servicios IA/OpenAPI
-  - `app/models/`: modelos SQLAlchemy (`Audit`, `User`)
-  - `app/schemas/`: contratos de entrada/salida
-  - `app/dependencies/`: dependencias reutilizables (auth)
-  - `app/core/`: configuración y seguridad
-- `ai-api-auditor-frontend/`: frontend React
-  - `src/App.jsx`: flujo principal de autenticación y análisis
-  - `src/components/`: componentes UI (login, formulario, resultados, historial)
-  - `src/utils/api.js`: cliente API centralizado
+```text
+ai-api-auditor/
+├── app/                         # Backend FastAPI
+│   ├── core/                    # Configuración y seguridad
+│   ├── db/                      # Base SQLAlchemy y sesiones
+│   ├── dependencies/            # Dependencias reutilizables (auth)
+│   ├── models/                  # Modelos SQLAlchemy
+│   ├── routers/                 # Rutas HTTP (auth, audits)
+│   ├── schemas/                 # Esquemas Pydantic
+│   ├── services/                # Lógica de auditoría, OpenAPI e IA
+│   └── utils/                   # Utilidades
+├── ai-api-auditor-frontend/      # Frontend React/Vite
+│   ├── src/components/          # Componentes UI reutilizables
+│   ├── src/hooks/               # Hooks de auth y auditorías
+│   ├── src/utils/               # Cliente API centralizado
+│   └── src/test/                # Setup de tests frontend
+├── alembic/                     # Migraciones de base de datos
+├── tests/                       # Tests backend
+├── .github/workflows/           # CI/CD
+├── Dockerfile                   # Backend Docker
+├── docker-compose.yml           # Backend + frontend local
+└── README.md
+```
 
-## Cómo ejecutar el backend
+## Cómo funciona la autenticación
 
-Requisitos:
+1. El usuario se registra con `POST /auth/register` o inicia sesión con `POST /auth/login`.
+2. El backend hashea contraseñas con bcrypt/passlib.
+3. Si las credenciales son válidas, se genera un JWT.
+4. El frontend guarda el token y lo envía en `Authorization: Bearer <token>`.
+5. Los endpoints sensibles de auditoría requieren token válido.
+6. Si el backend responde `401`, el frontend cierra sesión automáticamente.
 
-- Python 3.11+
-- Ollama debe estar instalado y ejecutándose para utilizar el análisis IA local.
+## Cómo funciona el análisis OpenAPI con IA local
 
-Pasos:
+1. El frontend envía un esquema OpenAPI JSON a `POST /audits/openapi`.
+2. El backend extrae endpoints REST válidos (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
+3. Cada endpoint se envía a Ollama para evaluar seguridad, diseño REST, validación, documentación y buenas prácticas.
+4. Si Ollama no está disponible o devuelve texto no parseable, el backend usa fallback seguro y no rompe la auditoría completa.
+5. El resultado se persiste en base de datos con métricas globales y detalle por endpoint.
+6. El frontend muestra resumen, detalle, historial, dashboard y exportaciones.
+
+## Capturas
+
+> Añadir imágenes reales cuando el proyecto esté desplegado o grabado.
+
+### Login / Registro
+
+`docs/screenshots/login-registro.png`
+
+### Dashboard principal
+
+`docs/screenshots/dashboard-principal.png`
+
+### Análisis OpenAPI
+
+`docs/screenshots/analisis-openapi.png`
+
+### Historial con filtros
+
+`docs/screenshots/historial-filtros.png`
+
+### Detalle de auditoría
+
+`docs/screenshots/detalle-auditoria.png`
+
+### Exportación PDF
+
+`docs/screenshots/exportacion-pdf.png`
+
+## Qué demuestra este proyecto
+
+- Desarrollo full stack con separación clara frontend/backend.
+- Diseño de APIs REST con FastAPI.
+- Autenticación JWT y protección de endpoints.
+- Persistencia con SQLAlchemy y migraciones con Alembic.
+- Testing backend con pytest.
+- Testing frontend con Vitest y React Testing Library.
+- CI/CD con GitHub Actions.
+- Arquitectura frontend modular con componentes y hooks reutilizables.
+- Integración con IA local mediante Ollama.
+- Manejo robusto de fallbacks cuando la IA no responde correctamente.
+- Exportación de datos a JSON y PDF.
+- DevOps básico con Docker Compose.
+- Preparación para deploy en Render/Railway y Vercel.
+- Buenas prácticas de calidad con pre-commit hooks.
+
+## Comandos útiles
+
+### Backend local
 
 ```bash
 python -m venv venv
@@ -52,18 +136,12 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-API disponible en:
+Backend disponible en:
 
 - `http://127.0.0.1:8000`
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-## Cómo ejecutar el frontend
-
-Requisitos:
-
-- Node.js 20+
-
-Pasos:
+### Frontend local
 
 ```bash
 cd ai-api-auditor-frontend
@@ -73,108 +151,150 @@ npm run dev
 
 Frontend disponible en:
 
-- `http://127.0.0.1:5173` (por defecto en Vite)
+- `http://127.0.0.1:5173`
 
-Configuración de entorno frontend:
-
-- Crear `.env` en `ai-api-auditor-frontend/` usando `.env.example`.
-- Variable principal:
-  - `VITE_API_BASE_URL=http://127.0.0.1:8000`
-
-## Cómo ejecutar con Docker Compose
-
-Desde la raíz del proyecto:
-
-```bash
-docker compose up --build
-```
-
-Servicios expuestos:
-
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:4173`
-
-Ollama no se levanta dentro de Docker Compose por ahora. Debe estar instalado y ejecutándose en la máquina local con el modelo configurado (por defecto `llama3`). El backend en Docker se conecta a Ollama mediante `host.docker.internal:11434`.
-
-## Cómo ejecutar tests
-
-Desde la raíz del proyecto:
+### Tests backend
 
 ```bash
 python -m pytest
 ```
 
-Los tests usan una base SQLite en memoria para evitar afectar la base local de desarrollo.
+### Tests frontend
 
-## Hooks de pre-commit
+```bash
+cd ai-api-auditor-frontend
+npm run test -- --run
+```
 
-El proyecto incluye configuración de pre-commit para validar formato básico, archivos YAML/JSON, tamaño de archivos y lint de backend antes de confirmar cambios.
+### Lint y build frontend
 
-Instalar pre-commit:
+```bash
+cd ai-api-auditor-frontend
+npm run lint
+npm run build
+```
+
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Servicios:
+
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:4173`
+
+Ollama no se levanta dentro de Docker Compose. Debe estar instalado y ejecutándose localmente. El backend en Docker usa `host.docker.internal:11434` para conectarse a Ollama.
+
+### Migraciones Alembic
+
+Crear una nueva migración:
+
+```bash
+python -m alembic revision --autogenerate -m "descripcion del cambio"
+```
+
+Aplicar migraciones:
+
+```bash
+python -m alembic upgrade head
+```
+
+Si ya existe una base creada antes de Alembic:
+
+```bash
+python -m alembic stamp 001_initial_schema
+python -m alembic upgrade head
+```
+
+### Pre-commit hooks
 
 ```bash
 pip install pre-commit
-```
-
-Activar hooks en el repositorio:
-
-```bash
 pre-commit install
-```
-
-Ejecutar todos los hooks manualmente:
-
-```bash
 pre-commit run --all-files
 ```
 
-## Migraciones de base de datos
+## Variables de entorno
 
-El backend usa Alembic para gestionar cambios de esquema de forma versionada.
+### Backend
 
-Crear una nueva migración tras modificar modelos SQLAlchemy:
+Crear `.env` en la raíz si se ejecuta localmente:
 
-```bash
-alembic revision --autogenerate -m "descripcion del cambio"
+```env
+DATABASE_URL=sqlite:///./ai_api_auditor.db
+SECRET_KEY=change-me-in-production
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+OLLAMA_URL=http://localhost:11434/api/generate
+OLLAMA_MODEL=llama3
+OLLAMA_TIMEOUT_SECONDS=60
 ```
 
-Aplicar migraciones pendientes:
+### Frontend
 
-```bash
-alembic upgrade head
+Crear `.env` dentro de `ai-api-auditor-frontend/`:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Alembic toma la conexión desde `DATABASE_URL` definida en `.env` o en `app/core/config.py`.
+Para producción:
+
+```env
+VITE_API_BASE_URL=https://TU-BACKEND-URL
+```
+
+## CI/CD
+
+GitHub Actions ejecuta validaciones en `push` y `pull_request`:
+
+- Backend:
+  - instalación de dependencias
+  - validación de sintaxis Python
+  - lint con flake8
+  - tests con pytest
+  - verificación de import de FastAPI
+- Frontend:
+  - instalación de dependencias
+  - tests con Vitest
+  - lint con ESLint
+  - build de producción con Vite
+
+Workflow principal:
+
+```text
+.github/workflows/ci.yml
+```
 
 ## Deploy backend en Render/Railway
 
-El backend está preparado para despliegue básico en Render/Railway usando variables de entorno y el puerto dinámico del proveedor.
+El backend está preparado para deploy básico usando variables de entorno y puerto dinámico.
 
-Comando de arranque recomendado:
+Comando de arranque:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-Si se despliega con Docker, el `Dockerfile` ya usa `${PORT:-8000}` para respetar el puerto del entorno.
+Si se despliega con Docker, el `Dockerfile` respeta `${PORT:-8000}`.
 
 Variables necesarias:
 
-- `DATABASE_URL`: conexión de base de datos. En producción se recomienda una base persistente gestionada por el proveedor.
-- `SECRET_KEY`: clave secreta JWT. Debe ser larga y privada.
-- `CORS_ORIGINS`: orígenes permitidos separados por comas, por ejemplo `https://tu-frontend.com`.
-- `ACCESS_TOKEN_EXPIRE_MINUTES`: duración del token JWT en minutos. Valor recomendado inicial: `30`.
-- `OLLAMA_URL`: URL del servicio Ollama si se usa análisis IA. En Render/Railway normalmente debe apuntar a un servicio externo accesible desde el backend.
-- `OLLAMA_MODEL`: modelo de Ollama. Valor por defecto: `llama3`.
-- `OLLAMA_TIMEOUT_SECONDS`: timeout para llamadas a Ollama. Valor por defecto: `60`.
+- `DATABASE_URL`
+- `SECRET_KEY`
+- `CORS_ORIGINS`
+- `ACCESS_TOKEN_EXPIRE_MINUTES`
+- `OLLAMA_URL`
+- `OLLAMA_MODEL`
+- `OLLAMA_TIMEOUT_SECONDS`
 
-El archivo `render.yaml` sirve como base para configurar el servicio backend en Render. En Railway se puede usar la misma imagen Docker y configurar las variables desde el panel del proyecto.
+El archivo `render.yaml` sirve como base para Render. En Railway se puede usar la misma imagen Docker y configurar variables desde el panel.
 
 ## Deploy frontend en Vercel
 
-El frontend está preparado para desplegarse en Vercel como aplicación Vite.
-
-Configuración recomendada en Vercel:
+Configuración recomendada:
 
 - Root Directory: `ai-api-auditor-frontend`
 - Build Command: `npm run build`
@@ -182,51 +302,16 @@ Configuración recomendada en Vercel:
 
 Variable necesaria:
 
-- `VITE_API_BASE_URL`: URL pública del backend desplegado, por ejemplo `https://tu-backend.onrender.com`.
+- `VITE_API_BASE_URL`: URL pública del backend desplegado.
 
-El archivo `ai-api-auditor-frontend/vercel.json` define la salida `dist` y un rewrite a `index.html` para evitar rutas rotas en navegación del lado cliente.
-
-## Cómo funciona la autenticación
-
-1. El usuario se registra (`POST /auth/register`) o inicia sesión (`POST /auth/login`).
-2. El backend valida credenciales, hashea/verifica contraseña con bcrypt y genera un JWT.
-3. El frontend guarda el token y lo envía en `Authorization: Bearer <token>` en endpoints protegidos.
-4. Endpoints sensibles de auditoría requieren token válido.
-5. Si el backend responde `401`, el frontend cierra sesión automáticamente.
-
-## Cómo funciona el análisis OpenAPI
-
-1. El frontend envía un esquema OpenAPI JSON a `POST /audits/openapi`.
-2. El backend extrae endpoints válidos (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
-3. Cada endpoint se analiza con la capa de IA (Ollama) para detectar riesgos y mejoras.
-4. Se calcula un resultado global:
-   - `average_score`
-   - `global_risk_level`
-   - lista de hallazgos por endpoint
-5. El frontend muestra tarjetas de resumen, detalle por endpoint e historial.
-
-## CI/CD
-
-El workflow de GitHub Actions (`.github/workflows/ci.yml`) ejecuta:
-
-- Backend:
-  - instalación de dependencias
-  - validación de sintaxis Python (`py_compile`)
-  - lint con `flake8`
-  - tests con `pytest`
-  - verificación de import del backend
-- Frontend:
-  - instalación de dependencias
-  - lint (`npm run lint` si existe)
-  - build de producción (`npm run build`)
-
-Objetivo: asegurar calidad mínima en cada `push` y `pull_request`.
+El archivo `ai-api-auditor-frontend/vercel.json` define la salida `dist` y rewrite a `index.html` para evitar rutas rotas en navegación cliente.
 
 ## Próximas mejoras
 
-- Mejorar cobertura de tests (auth, errores de negocio, casos límite OpenAPI).
-- Incorporar migraciones de base de datos (Alembic).
-- Añadir refresh token y expiración avanzada de sesión.
-- Restringir CORS por entorno (desarrollo vs producción).
-- Añadir observabilidad (logs estructurados y métricas).
-- Exportación de resultados en formatos adicionales (por ejemplo PDF).
+- Añadir refresh tokens.
+- Persistencia en PostgreSQL para producción.
+- Mejorar cobertura de tests y añadir umbrales mínimos.
+- Code splitting para reducir chunk de PDF.
+- Roles de usuario y permisos.
+- Comparación entre auditorías de una misma API.
+- Integración opcional con modelos remotos además de Ollama local.
