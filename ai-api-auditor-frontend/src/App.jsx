@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import AuditForm from "./components/AuditForm";
+import DashboardStats from "./components/DashboardStats";
 import HistoryList from "./components/HistoryList";
 import LoginForm from "./components/LoginForm";
 import ResultsPanel from "./components/ResultsPanel";
@@ -151,6 +152,17 @@ function App() {
                   translate={translate}
                 />
               </>
+            )}
+
+            {history.length > 0 && (
+              <DashboardStats
+                history={history}
+                getRiskLabel={getRiskLabel}
+                getColor={getColor}
+                statsStyle={stats}
+                miniCardStyle={miniCard}
+                sectionStyle={section}
+              />
             )}
 
             <HistoryList
