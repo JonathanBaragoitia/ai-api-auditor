@@ -21,25 +21,6 @@ class AuditAnalysis(BaseModel):
     recommendations: list[str]
 
 
-class AuditResponse(BaseModel):
-    id: int
-    name: str
-    method: str
-    path: str
-    description: str | None
-    auth_required: bool
-    request_example: dict[str, Any] | None
-    response_example: dict[str, Any] | None
-    score: float
-    risk_level: str
-    issues: list[str]
-    recommendations: list[str]
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class OpenAPIAuditRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=150)
     openapi_schema: dict[str, Any]
@@ -55,7 +36,31 @@ class OpenAPIEndpointAnalysis(BaseModel):
     recommendations: list[str]
 
 
+class AuditResponse(BaseModel):
+    id: int
+    name: str
+    method: str
+    path: str
+    description: str | None
+    auth_required: bool
+    request_example: dict[str, Any] | None
+    response_example: dict[str, Any] | None
+    score: float
+    risk_level: str
+    issues: list[str]
+    recommendations: list[str]
+    created_at: datetime
+    total_endpoints: int | None = None
+    average_score: float | None = None
+    global_risk_level: str | None = None
+    endpoints: list[OpenAPIEndpointAnalysis] | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class OpenAPIAuditResponse(BaseModel):
+    id: int | None = None
     name: str
     total_endpoints: int
     average_score: float

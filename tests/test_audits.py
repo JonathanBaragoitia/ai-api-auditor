@@ -149,5 +149,49 @@ def test_openapi_audit_returns_total_endpoints(monkeypatch):
     data = response.json()
     assert response.status_code == 200
     assert data["name"] == payload["name"]
+    assert isinstance(data["id"], int)
     assert data["total_endpoints"] == 1
     assert isinstance(data["endpoints"], list)
+
+
+def test_openapi_audit_is_persisted_in_history(monkeypatch):
+    def fake_analyze_openapi_schema(_openapi_schema):
+        return [
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/users",
+                summary="Lista usuarios",
+                score=8.5,
+                risk_level="low",
+                issues=["missing pagination"],
+                recommendations=["add pagination"],
+            )
+        ]
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.routers.audits.analyze_openapi_schema", fake_analyze_openapi_schema)
+
+    payload = {
+        "name": "OpenAPI persistida",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/openapi", json=payload, headers=headers)
+        list_response = client.get("/audits/", headers=headers)
+        detail_response = client.get(f"/audits/{create_response.json()['id']}")
+
+    history_item = list_response.json()[0]
+    detail = detail_response.json()
+
+    assert create_response.status_code == 200
+    assert list_response.status_code == 200
+    assert history_item["total_endpoints"] == 1
+    assert isinstance(history_item["endpoints"], list)
+    assert detail["name"] == payload["name"]
+    assert detail["endpoints"][0]["path"] == "/users"

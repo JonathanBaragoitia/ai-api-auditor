@@ -38,6 +38,10 @@ def parse_audit(audit: Audit) -> AuditResponse:
         issues=json.loads(audit.issues),
         recommendations=json.loads(audit.recommendations),
         created_at=audit.created_at,
+        total_endpoints=audit.total_endpoints,
+        average_score=audit.average_score,
+        global_risk_level=audit.global_risk_level,
+        endpoints=json.loads(audit.openapi_endpoints) if audit.openapi_endpoints else None,
     )
 
 
@@ -156,14 +160,38 @@ def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_d
 @router.post("/openapi", response_model=OpenAPIAuditResponse)
 def create_openapi_audit(
     data: OpenAPIAuditRequest,
+    db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
-    # Este flujo no persiste resultados; devuelve análisis agregado en tiempo real.
     endpoint_results = analyze_openapi_schema(data.openapi_schema)
 
     average_score, global_risk_level = calculate_global_audit_result(endpoint_results)
 
+    endpoints_data = [endpoint.model_dump() for endpoint in endpoint_results]
+    audit = Audit(
+        name=data.name,
+        method="OPENAPI",
+        path="OpenAPI",
+        description="Auditoría OpenAPI completa",
+        auth_required="true",
+        request_example=None,
+        response_example=None,
+        score=average_score,
+        risk_level=global_risk_level,
+        issues=json.dumps([]),
+        recommendations=json.dumps([]),
+        total_endpoints=len(endpoint_results),
+        average_score=average_score,
+        global_risk_level=global_risk_level,
+        openapi_endpoints=json.dumps(endpoints_data),
+    )
+
+    db.add(audit)
+    db.commit()
+    db.refresh(audit)
+
     return OpenAPIAuditResponse(
+        id=audit.id,
         name=data.name,
         total_endpoints=len(endpoint_results),
         average_score=average_score,

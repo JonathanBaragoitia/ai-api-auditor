@@ -26,4 +26,9 @@ class Audit(Base):
     issues = Column(Text, nullable=False)
     recommendations = Column(Text, nullable=False)
 
+    total_endpoints = Column(Integer, nullable=True)
+    average_score = Column(Float, nullable=True)
+    global_risk_level = Column(String(50), nullable=True)
+    openapi_endpoints = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)

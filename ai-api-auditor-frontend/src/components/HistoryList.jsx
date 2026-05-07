@@ -12,6 +12,7 @@ function HistoryList({
 }) {
   const [riskFilter, setRiskFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [selectedAudit, setSelectedAudit] = useState(null);
   const historyItems = Array.isArray(history) ? history : [];
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -72,6 +73,8 @@ function HistoryList({
               <p><b>{getFriendlyEndpointName(a?.path)}</b></p>
               <p>Puntuación: {a?.score}</p>
 
+              <button onClick={() => setSelectedAudit(a)}>Ver detalle</button>
+
               <h4>Problemas</h4>
               {issues.length > 0 ? (
                 <ul>
@@ -96,6 +99,69 @@ function HistoryList({
             </div>
           );
         })
+      )}
+
+      {selectedAudit && (
+        <div style={cardStyle}>
+          <div style={rowStyle}>
+            <h3>Detalle de auditoría</h3>
+            <span style={{ color: getColor(selectedAudit?.risk_level) }}>
+              {getRiskLabel(selectedAudit?.risk_level)}
+            </span>
+          </div>
+
+          <p><b>Nombre:</b> {translate(selectedAudit?.name)}</p>
+          <p><b>Fecha:</b> {selectedAudit?.created_at}</p>
+          <p><b>Puntuación:</b> {selectedAudit?.score}</p>
+          <p><b>Riesgo:</b> {getRiskLabel(selectedAudit?.risk_level)}</p>
+
+          {Array.isArray(selectedAudit?.endpoints) && selectedAudit.endpoints.length > 0 && (
+            <>
+              <h4>Endpoints analizados</h4>
+              {selectedAudit.endpoints.map((endpoint, index) => {
+                const endpointIssues = Array.isArray(endpoint?.issues) ? endpoint.issues : [];
+                const endpointRecommendations = Array.isArray(endpoint?.recommendations)
+                  ? endpoint.recommendations
+                  : [];
+
+                return (
+                  <div key={`${endpoint?.path}-${index}`} style={cardStyle}>
+                    <div style={rowStyle}>
+                      <h3>{getFriendlyEndpointName(endpoint?.path)}</h3>
+                      <span style={{ color: getColor(endpoint?.risk_level) }}>
+                        {getRiskLabel(endpoint?.risk_level)}
+                      </span>
+                    </div>
+
+                    <p><b>Puntuación:</b> {endpoint?.score}</p>
+
+                    <h4>Problemas</h4>
+                    {endpointIssues.length > 0 ? (
+                      <ul>
+                        {endpointIssues.map((x, i) => (
+                          <li key={i}>{translate(x)}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p style={{ opacity: 0.6 }}>Sin problemas detectados</p>
+                    )}
+
+                    <h4>Recomendaciones</h4>
+                    {endpointRecommendations.length > 0 ? (
+                      <ul>
+                        {endpointRecommendations.map((x, i) => (
+                          <li key={i}>{translate(x)}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p style={{ opacity: 0.6 }}>Sin recomendaciones</p>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
       )}
     </>
   );
