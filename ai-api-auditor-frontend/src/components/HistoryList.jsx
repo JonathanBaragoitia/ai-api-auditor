@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 function HistoryList({
   history,
   sectionStyle,
@@ -8,16 +10,55 @@ function HistoryList({
   getRiskLabel,
   getFriendlyEndpointName,
 }) {
+  const [riskFilter, setRiskFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const historyItems = Array.isArray(history) ? history : [];
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredHistory = historyItems.filter((audit) => {
+    const matchesRisk = riskFilter === "all" || audit?.risk_level === riskFilter;
+    const searchableText = [
+      audit?.name,
+      audit?.path,
+      getFriendlyEndpointName(audit?.path),
+      audit?.method,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+
+    return matchesRisk && matchesSearch;
+  });
 
   return (
     <>
       <h2 style={sectionStyle}>Historial</h2>
 
+      {historyItems.length > 0 && (
+        <>
+          <select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+            <option value="all">Todos</option>
+            <option value="low">Bajo</option>
+            <option value="medium">Medio</option>
+            <option value="high">Alto</option>
+          </select>
+
+          <input
+            type="text"
+            placeholder="Buscar por nombre o ruta..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </>
+      )}
+
       {historyItems.length === 0 ? (
         <p>Sin historial</p>
+      ) : filteredHistory.length === 0 ? (
+        <p>No hay auditorías que coincidan con los filtros.</p>
       ) : (
-        historyItems.map((a) => {
+        filteredHistory.map((a) => {
           const issues = Array.isArray(a?.issues) ? a.issues : [];
           const recommendations = Array.isArray(a?.recommendations) ? a.recommendations : [];
 
