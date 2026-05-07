@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import AuditForm from "./components/AuditForm";
 import HistoryList from "./components/HistoryList";
 import LoginForm from "./components/LoginForm";
 import ResultsPanel from "./components/ResultsPanel";
 import SummaryCards from "./components/SummaryCards";
-import { apiFetch } from "./utils/api";
+import { useAudits } from "./hooks/useAudits";
+import { useAuth } from "./hooks/useAuth";
 
 const translate = (text) => {
   if (!text) return text;
@@ -64,17 +65,9 @@ const getFriendlyEndpointName = (path) => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
-
 function App() {
   const [input, setInput] = useState("");
-  const [result, setResult] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  // Persistimos token para mantener sesión entre recargas.
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  const { token, login, register, logout } = useAuth();
 
   const getColor = (risk) => {
     if (risk === "low") return "#22c55e";
@@ -83,118 +76,21 @@ function App() {
     return "#94a3b8";
   };
 
+  const {
+    result,
+    history,
+    auditLoading,
+    auditError,
+    auditSuccess,
+    analyzeOpenAPI,
+    exportResult,
+    clearAuditState,
+  } = useAudits(token, logout);
+
   const handleLogout = useCallback(() => {
-    // Logout centralizado: limpia token y estado derivado para evitar
-    // que se sigan mostrando datos protegidos en pantalla.
-    setToken(null);
-    localStorage.removeItem("token");
-    setResult(null);
-    setHistory([]);
-    setError(null);
-    setSuccess(null);
-  }, []);
-
-  const loadHistory = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
-    try {
-      const data = await apiFetch(`${API_BASE_URL}/audits/`, {}, token, handleLogout);
-      setHistory(data);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [token, handleLogout]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadHistory();
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [loadHistory]);
-
-  const handleLogin = async ({ email, password }) => {
-    const data = await apiFetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!data?.access_token) {
-      throw new Error("Login failed");
-    }
-
-    setToken(data.access_token);
-    localStorage.setItem("token", data.access_token);
-  };
-
-  const handleRegister = async ({ email, password }) => {
-    const data = await apiFetch(`${API_BASE_URL}/auth/register`, {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!data?.access_token) {
-      throw new Error("Register failed");
-    }
-
-    setToken(data.access_token);
-    localStorage.setItem("token", data.access_token);
-  };
-
-  const handleAnalyze = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    setResult(null);
-
-    try {
-      const parsed = JSON.parse(input);
-
-      // El backend exige JWT para auditoría OpenAPI.
-      const data = await apiFetch(
-        `${API_BASE_URL}/audits/openapi`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            name: "Frontend Audit",
-            openapi_schema: parsed,
-          }),
-        },
-        token,
-        handleLogout,
-      );
-
-      setResult(data);
-      setSuccess("Análisis completado correctamente");
-      loadHistory();
-    } catch (err) {
-      console.error(err);
-      setError("Error al analizar la API");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExportResult = () => {
-    if (!result) {
-      return;
-    }
-
-    // Export local sin dependencias externas.
-    const jsonContent = JSON.stringify(result, null, 2);
-    const blob = new Blob([jsonContent], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "auditoria-api.json";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+    logout();
+    clearAuditState();
+  }, [logout, clearAuditState]);
 
   return (
     <div style={page}>
@@ -203,8 +99,8 @@ function App() {
 
         {!token ? (
           <LoginForm
-            onLogin={handleLogin}
-            onRegister={handleRegister}
+            onLogin={login}
+            onRegister={register}
             inputStyle={inputField}
             buttonStyle={button}
           />
@@ -217,10 +113,10 @@ function App() {
             <AuditForm
               input={input}
               onInputChange={setInput}
-              onAnalyze={handleAnalyze}
-              loading={loading}
-              error={error}
-              success={success}
+              onAnalyze={() => analyzeOpenAPI(input)}
+              loading={auditLoading}
+              error={auditError}
+              success={auditSuccess}
               textareaStyle={textarea}
               buttonStyle={button}
             />
@@ -228,7 +124,7 @@ function App() {
             {/* RESULTADO */}
             {result && (
               <>
-                <button onClick={handleExportResult} style={button}>
+                <button onClick={exportResult} style={button}>
                   Exportar resultado JSON
                 </button>
 
