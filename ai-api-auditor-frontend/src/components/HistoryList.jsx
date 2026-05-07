@@ -14,25 +14,46 @@ function HistoryList({
 }) {
   const [riskFilter, setRiskFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [minScore, setMinScore] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [selectedAudit, setSelectedAudit] = useState(null);
   const historyItems = Array.isArray(history) ? history : [];
   const normalizedSearch = search.trim().toLowerCase();
+  const parsedMinScore = minScore === "" ? null : Number(minScore);
 
-  const filteredHistory = historyItems.filter((audit) => {
-    const matchesRisk = riskFilter === "all" || audit?.risk_level === riskFilter;
-    const searchableText = [
-      audit?.name,
-      audit?.path,
-      getFriendlyEndpointName(audit?.path),
-      audit?.method,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+  const filteredHistory = historyItems
+    .filter((audit) => {
+      const matchesRisk = riskFilter === "all" || audit?.risk_level === riskFilter;
+      const endpointText = Array.isArray(audit?.endpoints)
+        ? audit.endpoints.map((endpoint) => `${endpoint?.path || ""} ${getFriendlyEndpointName(endpoint?.path)}`).join(" ")
+        : "";
+      const searchableText = [
+        audit?.name,
+        audit?.path,
+        getFriendlyEndpointName(audit?.path),
+        audit?.method,
+        endpointText,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+      const score = typeof audit?.score === "number" ? audit.score : 0;
+      const matchesMinScore = parsedMinScore === null || Number.isNaN(parsedMinScore) || score >= parsedMinScore;
 
-    return matchesRisk && matchesSearch;
-  });
+      return matchesRisk && matchesSearch && matchesMinScore;
+    })
+    .sort((a, b) => {
+      if (sortBy === "score_desc") {
+        return (b?.score || 0) - (a?.score || 0);
+      }
+
+      if (sortBy === "score_asc") {
+        return (a?.score || 0) - (b?.score || 0);
+      }
+
+      return new Date(b?.created_at || 0) - new Date(a?.created_at || 0);
+    });
 
   return (
     <>
@@ -49,10 +70,26 @@ function HistoryList({
 
           <input
             type="text"
-            placeholder="Buscar por nombre o ruta..."
+            placeholder="Buscar por nombre, ruta o endpoint..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+
+          <input
+            type="number"
+            min="0"
+            max="10"
+            step="0.1"
+            placeholder="Puntuación mínima"
+            value={minScore}
+            onChange={(e) => setMinScore(e.target.value)}
+          />
+
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="recent">Más recientes primero</option>
+            <option value="score_desc">Mayor puntuación</option>
+            <option value="score_asc">Menor puntuación</option>
+          </select>
         </>
       )}
 
