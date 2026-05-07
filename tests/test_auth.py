@@ -25,6 +25,7 @@ def override_get_db():
 
 
 def setup_function():
+    # Aislamiento por test para evitar fugas de estado entre casos.
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 

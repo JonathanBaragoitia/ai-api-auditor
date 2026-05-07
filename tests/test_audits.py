@@ -37,6 +37,8 @@ def teardown_function():
 
 
 def get_auth_headers(client: TestClient) -> dict:
+    # Los endpoints de auditoría están protegidos con JWT;
+    # este helper simplifica autenticación para los tests.
     register_payload = {
         "email": "test@example.com",
         "password": "test1234",

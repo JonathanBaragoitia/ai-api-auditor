@@ -73,6 +73,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  // Persistimos token para mantener sesión entre recargas.
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   const getColor = (risk) => {
@@ -83,6 +84,8 @@ function App() {
   };
 
   const handleLogout = useCallback(() => {
+    // Logout centralizado: limpia token y estado derivado para evitar
+    // que se sigan mostrando datos protegidos en pantalla.
     setToken(null);
     localStorage.removeItem("token");
     setResult(null);
@@ -149,6 +152,7 @@ function App() {
     try {
       const parsed = JSON.parse(input);
 
+      // El backend exige JWT para auditoría OpenAPI.
       const data = await apiFetch(
         `${API_BASE_URL}/audits/openapi`,
         {
@@ -178,6 +182,7 @@ function App() {
       return;
     }
 
+    // Export local sin dependencias externas.
     const jsonContent = JSON.stringify(result, null, 2);
     const blob = new Blob([jsonContent], { type: "application/json" });
     const url = URL.createObjectURL(blob);

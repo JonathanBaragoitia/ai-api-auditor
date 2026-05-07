@@ -9,6 +9,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
+    # passlib espera (password_en_texto_plano, hash_guardado)
+    # para evitar errores de verificación y límites de bcrypt.
     return pwd_context.verify(plain_password, password_hash)
 
 
@@ -17,6 +19,8 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(subject: str) -> str:
+    # El claim "sub" identifica al usuario (email) y se reutiliza
+    # en la dependencia get_current_user para reconstruir la sesión.
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {
         "sub": subject,

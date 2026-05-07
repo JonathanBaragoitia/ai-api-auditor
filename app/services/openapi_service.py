@@ -4,6 +4,7 @@ from app.utils.scoring import calculate_risk_level
 
 
 def extract_openapi_endpoints(openapi_schema: dict) -> list[dict]:
+    # Se ignoran métodos no REST para mantener un scoring consistente.
     paths = openapi_schema.get("paths", {})
     endpoints = []
 
@@ -50,6 +51,8 @@ def analyze_openapi_schema(openapi_schema: dict) -> list[OpenAPIEndpointAnalysis
         analysis = analyze_with_ollama(prompt)
 
         if "error" in analysis:
+            # Fallback defensivo: evita romper toda la auditoría
+            # cuando la IA no responde en formato utilizable.
             analysis = {
                 "score": 5,
                 "risk_level": "medium",

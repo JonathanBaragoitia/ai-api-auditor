@@ -11,6 +11,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
 def register(data: UserRegisterRequest, db: Session = Depends(get_db)):
+    # Normalizamos email para evitar duplicados por mayúsculas/minúsculas.
     email = data.email.strip().lower()
     existing_user = db.query(User).filter(User.email == email).first()
 
@@ -24,6 +25,7 @@ def register(data: UserRegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
 
+    # Se devuelve token inmediatamente para simplificar onboarding en frontend.
     token = create_access_token(subject=user.email)
     return TokenResponse(access_token=token)
 

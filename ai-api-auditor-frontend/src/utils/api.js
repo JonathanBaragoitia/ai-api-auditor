@@ -1,4 +1,6 @@
 export async function apiFetch(url, options = {}, token, onLogout) {
+  // Helper único para mantener headers, manejo de sesión y errores
+  // alineados entre login, historial y endpoints protegidos.
   const baseHeaders = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
@@ -14,6 +16,8 @@ export async function apiFetch(url, options = {}, token, onLogout) {
   });
 
   if (response.status === 401) {
+    // Si el backend invalida el token, forzamos logout en cliente
+    // para evitar estado autenticado inconsistente.
     if (onLogout) {
       onLogout();
     }

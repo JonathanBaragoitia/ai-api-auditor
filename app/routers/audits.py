@@ -22,6 +22,8 @@ router = APIRouter(prefix="/audits", tags=["Audits"])
 
 
 def parse_audit(audit: Audit) -> AuditResponse:
+    # Persistimos estructuras complejas como JSON en texto;
+    # aquí se reconstruyen para responder con contrato tipado.
     return AuditResponse(
         id=audit.id,
         name=audit.name,
@@ -64,6 +66,8 @@ def create_manual_audit(
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
+    # El usuario autenticado se inyecta para forzar control de acceso,
+    # aunque no se use explícitamente en la lógica de scoring.
     analysis = analyze_manual_audit(data)
 
     audit = Audit(
@@ -154,6 +158,7 @@ def create_openapi_audit(
     data: OpenAPIAuditRequest,
     _current_user: User = Depends(get_current_user),
 ):
+    # Este flujo no persiste resultados; devuelve análisis agregado en tiempo real.
     endpoint_results = analyze_openapi_schema(data.openapi_schema)
 
     average_score, global_risk_level = calculate_global_audit_result(endpoint_results)

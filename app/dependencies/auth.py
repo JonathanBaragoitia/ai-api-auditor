@@ -13,6 +13,8 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
+    # Dependencia centralizada para endpoints protegidos:
+    # valida JWT, extrae "sub" y carga el usuario desde DB.
     token = credentials.credentials
 
     try:
