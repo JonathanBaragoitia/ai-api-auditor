@@ -106,6 +106,28 @@ python -m pytest
 
 Los tests usan una base SQLite en memoria para evitar afectar la base local de desarrollo.
 
+## Hooks de pre-commit
+
+El proyecto incluye configuración de pre-commit para validar formato básico, archivos YAML/JSON, tamaño de archivos y lint de backend antes de confirmar cambios.
+
+Instalar pre-commit:
+
+```bash
+pip install pre-commit
+```
+
+Activar hooks en el repositorio:
+
+```bash
+pre-commit install
+```
+
+Ejecutar todos los hooks manualmente:
+
+```bash
+pre-commit run --all-files
+```
+
 ## Migraciones de base de datos
 
 El backend usa Alembic para gestionar cambios de esquema de forma versionada.
