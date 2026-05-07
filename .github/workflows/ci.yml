@@ -68,6 +68,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Run frontend tests
+        run: npm run test -- --run
+
       - name: Lint frontend if script exists
         run: |
           if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1)"; then
