@@ -1,18 +1,47 @@
+import logging
+
 from app.schemas.audit import OpenAPIEndpointAnalysis
 from app.services.ai_service import analyze_with_ollama
 from app.utils.scoring import calculate_risk_level
+
+logger = logging.getLogger(__name__)
+
+
+def fallback_endpoint_analysis(endpoint: dict, issue: str, recommendation: str) -> OpenAPIEndpointAnalysis:
+    return OpenAPIEndpointAnalysis(
+        method=endpoint.get("method", "UNKNOWN"),
+        path=endpoint.get("path", "unknown"),
+        summary=endpoint.get("summary"),
+        score=5.0,
+        risk_level="medium",
+        issues=[issue],
+        recommendations=[recommendation],
+    )
 
 
 def extract_openapi_endpoints(openapi_schema: dict) -> list[dict]:
     # Se ignoran métodos no REST para mantener un scoring consistente.
     paths = openapi_schema.get("paths", {})
+
+    if not isinstance(paths, dict):
+        logger.warning("OpenAPI schema has no valid paths object.")
+        return []
+
     endpoints = []
 
     valid_methods = {"get", "post", "put", "patch", "delete"}
 
     for path, methods in paths.items():
+        if not isinstance(methods, dict):
+            logger.warning("Skipping invalid OpenAPI path item for path %s", path)
+            continue
+
         for method, details in methods.items():
             if method.lower() not in valid_methods:
+                continue
+
+            if not isinstance(details, dict):
+                logger.warning("Skipping invalid OpenAPI operation %s %s", method, path)
                 continue
 
             endpoints.append(
@@ -48,29 +77,39 @@ def analyze_openapi_schema(openapi_schema: dict) -> list[OpenAPIEndpointAnalysis
         Evalúa diseño REST, seguridad, paginación, documentación y buenas prácticas.
         """
 
-        analysis = analyze_with_ollama(prompt)
+        try:
+            analysis = analyze_with_ollama(prompt)
+            score = float(analysis.get("score", 5))
+            risk_level = analysis.get("risk_level") or "medium"
+            issues = analysis.get("issues", [])
+            recommendations = analysis.get("recommendations", [])
 
-        if "error" in analysis:
-            # Fallback defensivo: evita romper toda la auditoría
-            # cuando la IA no responde en formato utilizable.
-            analysis = {
-                "score": 5,
-                "risk_level": "medium",
-                "issues": ["No se pudo obtener un análisis estructurado de la IA."],
-                "recommendations": ["Revisar manualmente este endpoint."],
-            }
+            if not isinstance(issues, list):
+                issues = [str(issues)]
 
-        results.append(
-            OpenAPIEndpointAnalysis(
-                method=endpoint["method"],
-                path=endpoint["path"],
-                summary=endpoint["summary"],
-                score=float(analysis["score"]),
-                risk_level=analysis["risk_level"],
-                issues=analysis["issues"],
-                recommendations=analysis["recommendations"],
+            if not isinstance(recommendations, list):
+                recommendations = [str(recommendations)]
+
+            results.append(
+                OpenAPIEndpointAnalysis(
+                    method=endpoint["method"],
+                    path=endpoint["path"],
+                    summary=endpoint["summary"],
+                    score=score,
+                    risk_level=risk_level,
+                    issues=issues,
+                    recommendations=recommendations,
+                )
             )
-        )
+        except Exception as exc:
+            logger.exception("OpenAPI endpoint analysis failed for %s %s", endpoint["method"], endpoint["path"])
+            results.append(
+                fallback_endpoint_analysis(
+                    endpoint,
+                    "No se pudo analizar este endpoint por un error interno del análisis IA.",
+                    f"Revisar logs del backend. Detalle técnico: {exc}",
+                )
+            )
 
     return results
 

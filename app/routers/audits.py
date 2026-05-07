@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -19,6 +20,7 @@ from app.schemas.audit import (
 
 
 router = APIRouter(prefix="/audits", tags=["Audits"])
+logger = logging.getLogger(__name__)
 
 
 def parse_audit(audit: Audit) -> AuditResponse:
@@ -163,6 +165,7 @@ def create_openapi_audit(
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
+    logger.info("Starting OpenAPI audit: name=%s", data.name)
     endpoint_results = analyze_openapi_schema(data.openapi_schema)
 
     average_score, global_risk_level = calculate_global_audit_result(endpoint_results)
@@ -189,6 +192,7 @@ def create_openapi_audit(
     db.add(audit)
     db.commit()
     db.refresh(audit)
+    logger.info("OpenAPI audit stored: id=%s endpoints=%s", audit.id, len(endpoint_results))
 
     return OpenAPIAuditResponse(
         id=audit.id,

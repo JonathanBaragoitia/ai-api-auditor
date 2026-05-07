@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 
 import requests
@@ -6,6 +7,18 @@ import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3"
+OLLAMA_TIMEOUT_SECONDS = 60
+
+logger = logging.getLogger(__name__)
+
+
+def fallback_analysis(issue: str, recommendation: str) -> dict:
+    return {
+        "score": 5,
+        "risk_level": "medium",
+        "issues": [issue],
+        "recommendations": [recommendation],
+    }
 
 
 def extract_json_from_text(text: str) -> dict:
@@ -16,27 +29,25 @@ def extract_json_from_text(text: str) -> dict:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        pass
+        logger.debug("Ollama response was not pure JSON; trying to extract JSON block.")
 
     match = re.search(r"\{.*\}", text, re.DOTALL)
 
     if not match:
-        return {
-            "score": 5,
-            "risk_level": "medium",
-            "issues": ["La IA no devolvió un JSON válido."],
-            "recommendations": ["Revisar manualmente este endpoint."],
-        }
+        logger.warning("Ollama response did not include a valid JSON object.")
+        return fallback_analysis(
+            "La IA no devolvió un JSON válido.",
+            "Revisar manualmente este endpoint.",
+        )
 
     try:
         return json.loads(match.group())
     except json.JSONDecodeError:
-        return {
-            "score": 5,
-            "risk_level": "medium",
-            "issues": ["No se pudo interpretar correctamente la respuesta de la IA."],
-            "recommendations": ["Revisar manualmente este endpoint."],
-        }
+        logger.warning("Ollama response included a JSON-like block but parsing failed.")
+        return fallback_analysis(
+            "No se pudo interpretar correctamente la respuesta de la IA.",
+            "Revisar manualmente este endpoint.",
+        )
 
 
 def normalize_risk(score: float, issues: list[str]) -> str:
@@ -117,20 +128,32 @@ def analyze_with_ollama(prompt: str) -> dict:
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=60)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
         response.raise_for_status()
-    except requests.RequestException:
-        return {
-            "score": 5,
-            "risk_level": "medium",
-            "issues": ["No se pudo conectar con Ollama."],
-            "recommendations": ["Comprueba que Ollama está encendido y que el modelo está descargado."],
-        }
+    except requests.RequestException as exc:
+        logger.warning("Ollama request failed: %s", exc)
+        return fallback_analysis(
+            "No se pudo conectar con Ollama.",
+            "Comprueba que Ollama está encendido y que el modelo está descargado.",
+        )
 
-    raw_text = response.json().get("response", "")
+    try:
+        raw_text = response.json().get("response", "")
+    except ValueError as exc:
+        logger.warning("Ollama returned a non-JSON HTTP response: %s", exc)
+        return fallback_analysis(
+            "Ollama devolvió una respuesta HTTP no válida.",
+            "Revisar que Ollama y el modelo configurado estén funcionando correctamente.",
+        )
+
     analysis = extract_json_from_text(raw_text)
 
-    score = float(analysis.get("score", 5))
+    try:
+        score = float(analysis.get("score", 5))
+    except (TypeError, ValueError):
+        logger.warning("Ollama returned an invalid score: %r", analysis.get("score"))
+        score = 5
+
     issues = analysis.get("issues", [])
     recommendations = analysis.get("recommendations", [])
 

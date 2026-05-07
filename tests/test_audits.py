@@ -195,3 +195,36 @@ def test_openapi_audit_is_persisted_in_history(monkeypatch):
     assert isinstance(history_item["endpoints"], list)
     assert detail["name"] == payload["name"]
     assert detail["endpoints"][0]["path"] == "/users"
+
+
+def test_openapi_audit_uses_safe_fallback_when_ai_response_is_invalid(monkeypatch):
+    def fake_analyze_with_ollama(_prompt):
+        return {
+            "score": "not-a-number",
+            "risk_level": None,
+            "issues": "invalid-json-from-ai",
+            "recommendations": None,
+        }
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.services.openapi_service.analyze_with_ollama", fake_analyze_with_ollama)
+
+    payload = {
+        "name": "OpenAPI con IA inválida",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data["total_endpoints"] == 1
+    assert data["endpoints"][0]["score"] == 5.0
+    assert data["endpoints"][0]["risk_level"] == "medium"
