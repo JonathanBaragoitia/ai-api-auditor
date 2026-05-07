@@ -146,6 +146,46 @@ alembic upgrade head
 
 Alembic toma la conexión desde `DATABASE_URL` definida en `.env` o en `app/core/config.py`.
 
+## Deploy backend en Render/Railway
+
+El backend está preparado para despliegue básico en Render/Railway usando variables de entorno y el puerto dinámico del proveedor.
+
+Comando de arranque recomendado:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Si se despliega con Docker, el `Dockerfile` ya usa `${PORT:-8000}` para respetar el puerto del entorno.
+
+Variables necesarias:
+
+- `DATABASE_URL`: conexión de base de datos. En producción se recomienda una base persistente gestionada por el proveedor.
+- `SECRET_KEY`: clave secreta JWT. Debe ser larga y privada.
+- `CORS_ORIGINS`: orígenes permitidos separados por comas, por ejemplo `https://tu-frontend.com`.
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: duración del token JWT en minutos. Valor recomendado inicial: `30`.
+- `OLLAMA_URL`: URL del servicio Ollama si se usa análisis IA. En Render/Railway normalmente debe apuntar a un servicio externo accesible desde el backend.
+- `OLLAMA_MODEL`: modelo de Ollama. Valor por defecto: `llama3`.
+- `OLLAMA_TIMEOUT_SECONDS`: timeout para llamadas a Ollama. Valor por defecto: `60`.
+
+El archivo `render.yaml` sirve como base para configurar el servicio backend en Render. En Railway se puede usar la misma imagen Docker y configurar las variables desde el panel del proyecto.
+
+## Deploy frontend en Vercel
+
+El frontend está preparado para desplegarse en Vercel como aplicación Vite.
+
+Configuración recomendada en Vercel:
+
+- Root Directory: `ai-api-auditor-frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+Variable necesaria:
+
+- `VITE_API_BASE_URL`: URL pública del backend desplegado, por ejemplo `https://tu-backend.onrender.com`.
+
+El archivo `ai-api-auditor-frontend/vercel.json` define la salida `dist` y un rewrite a `index.html` para evitar rutas rotas en navegación del lado cliente.
+
 ## Cómo funciona la autenticación
 
 1. El usuario se registra (`POST /auth/register`) o inicia sesión (`POST /auth/login`).
