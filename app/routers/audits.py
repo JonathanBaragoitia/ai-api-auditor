@@ -10,7 +10,7 @@ from app.db.database import get_db
 from app.models.audit import Audit
 from app.models.user import User
 from app.services.audit_service import analyze_manual_audit
-from app.services.ai_service import analyze_with_ollama
+from app.services.ai_service import SPANISH_OUTPUT_INSTRUCTIONS, analyze_with_ollama
 from app.schemas.audit import (
     AuditResponse,
     ManualAuditRequest,
@@ -59,15 +59,42 @@ def parse_audit(audit: Audit) -> AuditResponse:
 @router.get("/", response_model=list[AuditResponse])
 def get_audits(
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    audits = db.query(Audit).order_by(Audit.created_at.desc()).all()
+    audits = (
+        db.query(Audit)
+        .filter(Audit.user_id == current_user.id)
+        .order_by(Audit.created_at.desc())
+        .all()
+    )
+    return [parse_audit(audit) for audit in audits]
+
+
+@router.get("/history")
+def get_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    audits = (
+        db.query(Audit)
+        .filter(Audit.user_id == current_user.id)
+        .order_by(Audit.created_at.desc())
+        .all()
+    )
     return [parse_audit(audit) for audit in audits]
 
 
 @router.get("/{audit_id}", response_model=AuditResponse)
-def get_audit(audit_id: int, db: Session = Depends(get_db)):
-    audit = db.query(Audit).filter(Audit.id == audit_id).first()
+def get_audit(
+    audit_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    audit = (
+        db.query(Audit)
+        .filter(Audit.id == audit_id, Audit.user_id == current_user.id)
+        .first()
+    )
 
     if not audit:
         raise HTTPException(status_code=404, detail="Auditoría no encontrada.")
@@ -79,13 +106,14 @@ def get_audit(audit_id: int, db: Session = Depends(get_db)):
 def create_manual_audit(
     data: ManualAuditRequest,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     # El usuario autenticado se inyecta para forzar control de acceso,
     # aunque no se use explícitamente en la lógica de scoring.
     analysis = analyze_manual_audit(data)
 
     audit = Audit(
+        user_id=current_user.id,
         name=data.name,
         method=data.method.upper(),
         path=data.path,
@@ -111,13 +139,15 @@ def create_manual_audit(
 
 
 @router.post("/ai-test")
-def ai_test():
+def ai_test(_current_user: User = Depends(get_current_user)):
     prompt = """
     Endpoint:
     GET /users
 
     No tiene autenticación.
     Devuelve lista de usuarios.
+
+    Responde siempre en español profesional.
     """
 
     result = analyze_with_ollama(prompt)
@@ -126,10 +156,16 @@ def ai_test():
 
 
 @router.post("/manual-ai", response_model=AuditResponse, status_code=201)
-def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_db)):
+def create_manual_ai_audit(
+    data: ManualAuditRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     prompt = f"""
     Endpoint:
     {data.method} {data.path}
+
+    {SPANISH_OUTPUT_INSTRUCTIONS}
 
     Descripción:
     {data.description}
@@ -144,6 +180,7 @@ def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_d
     {data.response_example}
 
     Analiza este endpoint y devuelve una auditoría técnica.
+    Devuelve summary, issues, recommendations y observaciones narrativas siempre en español.
     """
 
     analysis = analyze_with_ollama(prompt)
@@ -152,6 +189,7 @@ def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_d
         raise HTTPException(status_code=500, detail="Error en el análisis con IA.")
 
     audit = Audit(
+        user_id=current_user.id,
         name=data.name,
         method=data.method.upper(),
         path=data.path,
@@ -180,7 +218,7 @@ def create_manual_ai_audit(data: ManualAuditRequest, db: Session = Depends(get_d
 def create_openapi_audit(
     data: OpenAPIAuditRequest,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     logger.info("Starting OpenAPI audit: name=%s", data.name)
     endpoint_results = analyze_openapi_schema(data.openapi_schema)
@@ -190,6 +228,7 @@ def create_openapi_audit(
 
     endpoints_data = [endpoint.model_dump() for endpoint in endpoint_results]
     audit = Audit(
+        user_id=current_user.id,
         name=data.name,
         method="OPENAPI",
         path="OpenAPI",
@@ -241,12 +280,3 @@ def create_openapi_audit(
         maintainability_observation=observations["maintainability_observation"],
         endpoints=endpoint_results,
     )
-
-
-@router.get("/history")
-def get_history(
-    db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
-):
-    audits = db.query(Audit).order_by(Audit.created_at.desc()).all()
-    return [parse_audit(audit) for audit in audits]

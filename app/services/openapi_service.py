@@ -6,6 +6,7 @@ from app.services.ai_service import (
     DEFAULT_SECURITY_OBSERVATION,
     DEFAULT_SUMMARY,
     DEFAULT_TECHNICAL_OBSERVATION,
+    SPANISH_OUTPUT_INSTRUCTIONS,
     analyze_with_ollama,
 )
 from app.utils.scoring import calculate_risk_level
@@ -21,7 +22,7 @@ def fallback_endpoint_analysis(
     return OpenAPIEndpointAnalysis(
         method=endpoint.get("method", "UNKNOWN"),
         path=endpoint.get("path", "unknown"),
-        summary=endpoint.get("summary"),
+        summary=DEFAULT_SUMMARY,
         score=5.0,
         risk_level="medium",
         issues=[issue],
@@ -80,14 +81,18 @@ def analyze_openapi_schema(openapi_schema: dict) -> list[OpenAPIEndpointAnalysis
         prompt = f"""
         Analiza este endpoint definido en OpenAPI:
 
+        {SPANISH_OUTPUT_INSTRUCTIONS}
+
         Método: {endpoint["method"]}
         Ruta: {endpoint["path"]}
-        Resumen: {endpoint["summary"]}
+        Resumen original de OpenAPI: {endpoint["summary"]}
         Seguridad: {endpoint["security"]}
         Parámetros: {endpoint["parameters"]}
         Respuestas: {endpoint["responses"]}
 
         Evalúa diseño REST, seguridad, paginación, documentación y buenas prácticas.
+        Si el resumen original está en inglés, genera un summary en español profesional.
+        Devuelve issues, recommendations y observaciones narrativas siempre en español.
         """
 
         try:
@@ -107,7 +112,7 @@ def analyze_openapi_schema(openapi_schema: dict) -> list[OpenAPIEndpointAnalysis
                 OpenAPIEndpointAnalysis(
                     method=endpoint["method"],
                     path=endpoint["path"],
-                    summary=analysis.get("summary") or endpoint["summary"] or DEFAULT_SUMMARY,
+                    summary=analysis.get("summary") or DEFAULT_SUMMARY,
                     score=score,
                     risk_level=risk_level,
                     issues=issues,

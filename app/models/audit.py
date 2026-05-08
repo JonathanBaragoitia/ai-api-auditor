@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from app.db.database import Base
 
@@ -9,6 +10,9 @@ class Audit(Base):
     __tablename__ = "audits"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    user = relationship("User", back_populates="audits")
 
     name = Column(String(150), nullable=False)
     method = Column(String(10), nullable=False)

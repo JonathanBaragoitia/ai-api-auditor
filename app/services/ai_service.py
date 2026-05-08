@@ -26,6 +26,15 @@ DEFAULT_MAINTAINABILITY_OBSERVATION = (
     "La mantenibilidad mejora con documentación clara, respuestas previsibles, ejemplos actualizados "
     "y convenciones consistentes."
 )
+SPANISH_OUTPUT_INSTRUCTIONS = """
+Instrucciones obligatorias de idioma:
+- Responde siempre en español.
+- Todo el contenido generado debe estar en español profesional.
+- No devuelvas explicaciones en inglés.
+- Mantén términos técnicos comunes solo si son estándar: endpoint, API, OpenAPI, JWT, OAuth, rate limiting.
+- Todos los valores textuales del JSON deben estar en español.
+- Esto incluye summary, observations, issues y recommendations.
+"""
 
 
 def fallback_analysis(issue: str, recommendation: str) -> dict:
@@ -80,12 +89,16 @@ def normalize_risk(score: float, issues: list[str]) -> str:
     security_keywords = [
         "authentication",
         "authorization",
+        "autenticación",
+        "autorización",
         "auth",
         "jwt",
         "api key",
         "token",
         "sensitive",
+        "sensible",
         "security",
+        "seguridad",
         "secure",
     ]
 
@@ -111,50 +124,52 @@ def normalize_text(value: object, default: str) -> str:
 
 
 def analyze_with_ollama(prompt: str) -> dict:
-    system_prompt = """
-    You are a senior backend API security auditor.
+    system_prompt = f"""
+    Eres un auditor senior de seguridad y arquitectura de APIs backend.
 
-    Analyze the API endpoint and return ONLY valid JSON.
+    Analiza el endpoint de API y devuelve SOLO JSON válido.
 
-    You must provide a clear, professional, concise technical audit.
+    Debes proporcionar una auditoría técnica clara, profesional y concisa.
 
-    You must evaluate:
-    - REST design quality
-    - authentication and authorization
-    - pagination
-    - input validation
-    - response codes
-    - error handling
-    - documentation quality
+    {SPANISH_OUTPUT_INSTRUCTIONS}
+
+    Debes evaluar:
+    - calidad del diseño REST
+    - autenticación y autorización
+    - paginación
+    - validación de entrada
+    - códigos de respuesta
+    - manejo de errores
+    - calidad de la documentación
     - rate limiting
-    - security best practices
+    - buenas prácticas de seguridad
 
-    Scoring rules:
-    - Missing authentication on endpoints that expose user data must reduce score.
-    - Missing pagination on list endpoints must reduce score.
-    - Missing validation must reduce score.
-    - Poor documentation must reduce score.
-    - Security issues should normally result in medium or high risk.
+    Reglas de puntuación:
+    - La falta de autenticación en endpoints que exponen datos de usuario debe reducir la puntuación.
+    - La falta de paginación en endpoints de listado debe reducir la puntuación.
+    - La falta de validación debe reducir la puntuación.
+    - La documentación deficiente debe reducir la puntuación.
+    - Los problemas de seguridad normalmente deben producir riesgo medio o alto.
 
-    Narrative fields must sound like a senior API architect wrote them.
-    Keep each narrative field brief and useful for a technical stakeholder.
+    Los campos narrativos deben sonar como escritos por un arquitecto senior de APIs.
+    Mantén cada campo narrativo breve y útil para un interlocutor técnico.
 
-    Return exactly this JSON structure:
+    Devuelve exactamente esta estructura JSON:
 
-    {
+    {{
       "score": number,
       "risk_level": "low" | "medium" | "high",
-      "issues": ["string"],
-      "recommendations": ["string"],
-      "summary": "brief professional summary of the audit result",
-      "technical_observation": "clear technical observation about API design and contract quality",
-      "security_observation": "clear security observation about auth, data exposure or controls",
-      "maintainability_observation": "clear maintainability observation about documentation, consistency and evolution"
-    }
+      "issues": ["problema detectado en español"],
+      "recommendations": ["recomendación accionable en español"],
+      "summary": "resumen profesional breve del resultado de la auditoría en español",
+      "technical_observation": "observación técnica clara sobre diseño y contrato de API en español",
+      "security_observation": "observación de seguridad clara sobre controles en español",
+      "maintainability_observation": "observación sobre documentación, consistencia y evolución en español"
+    }}
 
-    Do not include markdown.
-    Do not include explanations.
-    Only JSON.
+    No incluyas markdown.
+    No incluyas explicaciones fuera del JSON.
+    Solo JSON.
     """
 
     payload = {
