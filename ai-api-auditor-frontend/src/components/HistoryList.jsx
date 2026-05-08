@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import AIObservationCards from "./AIObservationCards";
 import AuditDetailModal from "./AuditDetailModal";
 
 function HistoryList({
@@ -19,19 +20,43 @@ function HistoryList({
   const [selectedAudit, setSelectedAudit] = useState(null);
   const historyItems = Array.isArray(history) ? history : [];
   const normalizedSearch = search.trim().toLowerCase();
-  const parsedMinScore = minScore === "" ? null : Number(minScore);
+  const parsedMinScore = Number(minScore || 0);
+
+  const clearFilters = () => {
+    setRiskFilter("all");
+    setSearch("");
+    setMinScore("");
+    setSortBy("recent");
+  };
 
   const filteredHistory = historyItems
     .filter((audit) => {
       const matchesRisk = riskFilter === "all" || audit?.risk_level === riskFilter;
       const endpointText = Array.isArray(audit?.endpoints)
-        ? audit.endpoints.map((endpoint) => `${endpoint?.path || ""} ${getFriendlyEndpointName(endpoint?.path)}`).join(" ")
+        ? audit.endpoints
+            .map((endpoint) => [
+              endpoint?.path,
+              getFriendlyEndpointName(endpoint?.path),
+              endpoint?.summary,
+              endpoint?.technical_observation,
+              endpoint?.security_observation,
+              endpoint?.maintainability_observation,
+              ...(Array.isArray(endpoint?.issues) ? endpoint.issues : []),
+              ...(Array.isArray(endpoint?.recommendations) ? endpoint.recommendations : []),
+            ].filter(Boolean).join(" "))
+            .join(" ")
         : "";
       const searchableText = [
         audit?.name,
         audit?.path,
         getFriendlyEndpointName(audit?.path),
         audit?.method,
+        audit?.summary,
+        audit?.technical_observation,
+        audit?.security_observation,
+        audit?.maintainability_observation,
+        ...(Array.isArray(audit?.issues) ? audit.issues : []),
+        ...(Array.isArray(audit?.recommendations) ? audit.recommendations : []),
         endpointText,
       ]
         .filter(Boolean)
@@ -39,7 +64,7 @@ function HistoryList({
         .toLowerCase();
       const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
       const score = typeof audit?.score === "number" ? audit.score : 0;
-      const matchesMinScore = parsedMinScore === null || Number.isNaN(parsedMinScore) || score >= parsedMinScore;
+      const matchesMinScore = Number.isNaN(parsedMinScore) || score >= parsedMinScore;
 
       return matchesRisk && matchesSearch && matchesMinScore;
     })
@@ -60,43 +85,67 @@ function HistoryList({
       <h2 style={sectionStyle}>Historial</h2>
 
       {historyItems.length > 0 && (
-        <>
-          <select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
-            <option value="all">Todos</option>
-            <option value="low">Bajo</option>
-            <option value="medium">Medio</option>
-            <option value="high">Alto</option>
-          </select>
+        <div style={filtersBar}>
+          <div style={searchGroup}>
+            <label style={label}>Buscar</label>
+            <input
+              type="text"
+              placeholder="Buscar auditoría, endpoint o recomendación..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
 
-          <input
-            type="text"
-            placeholder="Buscar por nombre, ruta o endpoint..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div style={filterGroup}>
+            <label style={label}>Riesgo</label>
+            <select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)} style={selectStyle}>
+              <option value="all">Todos</option>
+              <option value="low">Bajo</option>
+              <option value="medium">Medio</option>
+              <option value="high">Alto</option>
+            </select>
+          </div>
 
-          <input
-            type="number"
-            min="0"
-            max="10"
-            step="0.1"
-            placeholder="Puntuación mínima"
-            value={minScore}
-            onChange={(e) => setMinScore(e.target.value)}
-          />
+          <div style={filterGroup}>
+            <label style={label}>Puntuación mínima: {minScore || 0}</label>
+            <input
+              type="range"
+              min="0"
+              max="10"
+              step="0.5"
+              value={minScore || 0}
+              onChange={(e) => setMinScore(e.target.value)}
+              style={rangeStyle}
+            />
+          </div>
 
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="recent">Más recientes primero</option>
-            <option value="score_desc">Mayor puntuación</option>
-            <option value="score_asc">Menor puntuación</option>
-          </select>
-        </>
+          <div style={filterGroup}>
+            <label style={label}>Ordenar</label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={selectStyle}>
+              <option value="recent">Más recientes primero</option>
+              <option value="score_desc">Mayor puntuación</option>
+              <option value="score_asc">Menor puntuación</option>
+            </select>
+          </div>
+
+          <button onClick={clearFilters} style={clearButton}>
+            Limpiar filtros
+          </button>
+        </div>
+      )}
+
+      {historyItems.length > 0 && (
+        <p style={counterStyle}>Mostrando {filteredHistory.length} auditorías</p>
       )}
 
       {historyItems.length === 0 ? (
         <p>Sin historial</p>
       ) : filteredHistory.length === 0 ? (
-        <p>No hay auditorías que coincidan con los filtros.</p>
+        <div style={emptyState}>
+          <p style={emptyIcon}>⌕</p>
+          <p>No hay auditorías que coincidan con los filtros actuales.</p>
+        </div>
       ) : (
         filteredHistory.map((a) => {
           const issues = Array.isArray(a?.issues) ? a.issues : [];
@@ -111,6 +160,8 @@ function HistoryList({
 
               <p><b>{getFriendlyEndpointName(a?.path)}</b></p>
               <p>Puntuación: {a?.score}</p>
+
+              <AIObservationCards item={a} translate={translate} compact />
 
               <button onClick={() => setSelectedAudit(a)}>Ver detalle</button>
 
@@ -153,5 +204,86 @@ function HistoryList({
     </>
   );
 }
+
+const filtersBar = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 14,
+  alignItems: "end",
+  background: "#1e293b",
+  border: "1px solid #334155",
+  borderRadius: 12,
+  padding: 16,
+  marginTop: 16,
+};
+
+const searchGroup = {
+  flex: "2 1 280px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const filterGroup = {
+  flex: "1 1 180px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const label = {
+  fontSize: 13,
+  color: "#cbd5e1",
+};
+
+const inputStyle = {
+  padding: 11,
+  background: "#0f172a",
+  color: "white",
+  border: "1px solid #334155",
+  borderRadius: 10,
+};
+
+const selectStyle = {
+  padding: 11,
+  background: "#0f172a",
+  color: "white",
+  border: "1px solid #334155",
+  borderRadius: 10,
+};
+
+const rangeStyle = {
+  width: "100%",
+  accentColor: "#6366f1",
+};
+
+const clearButton = {
+  padding: 11,
+  background: "#334155",
+  color: "white",
+  border: "1px solid #475569",
+  borderRadius: 10,
+  cursor: "pointer",
+};
+
+const counterStyle = {
+  color: "#cbd5e1",
+  marginTop: 12,
+};
+
+const emptyState = {
+  background: "#1e293b",
+  border: "1px solid #334155",
+  borderRadius: 12,
+  padding: 24,
+  marginTop: 16,
+  textAlign: "center",
+  color: "#cbd5e1",
+};
+
+const emptyIcon = {
+  fontSize: 34,
+  margin: 0,
+};
 
 export default HistoryList;

@@ -13,12 +13,31 @@ OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_SUMMARY = "Análisis generado con criterios técnicos generales de diseño, seguridad y mantenibilidad."
+DEFAULT_TECHNICAL_OBSERVATION = (
+    "El endpoint debe revisarse considerando claridad del contrato, uso correcto de métodos HTTP, "
+    "códigos de respuesta y consistencia REST."
+)
+DEFAULT_SECURITY_OBSERVATION = (
+    "Conviene validar autenticación, autorización, exposición de datos sensibles y controles básicos "
+    "como validación de entrada y rate limiting."
+)
+DEFAULT_MAINTAINABILITY_OBSERVATION = (
+    "La mantenibilidad mejora con documentación clara, respuestas previsibles, ejemplos actualizados "
+    "y convenciones consistentes."
+)
+
+
 def fallback_analysis(issue: str, recommendation: str) -> dict:
     return {
         "score": 5,
         "risk_level": "medium",
         "issues": [issue],
         "recommendations": [recommendation],
+        "summary": DEFAULT_SUMMARY,
+        "technical_observation": DEFAULT_TECHNICAL_OBSERVATION,
+        "security_observation": DEFAULT_SECURITY_OBSERVATION,
+        "maintainability_observation": DEFAULT_MAINTAINABILITY_OBSERVATION,
     }
 
 
@@ -84,11 +103,20 @@ def normalize_risk(score: float, issues: list[str]) -> str:
     return "high"
 
 
+def normalize_text(value: object, default: str) -> str:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+
+    return default
+
+
 def analyze_with_ollama(prompt: str) -> dict:
     system_prompt = """
     You are a senior backend API security auditor.
 
     Analyze the API endpoint and return ONLY valid JSON.
+
+    You must provide a clear, professional, concise technical audit.
 
     You must evaluate:
     - REST design quality
@@ -108,13 +136,20 @@ def analyze_with_ollama(prompt: str) -> dict:
     - Poor documentation must reduce score.
     - Security issues should normally result in medium or high risk.
 
+    Narrative fields must sound like a senior API architect wrote them.
+    Keep each narrative field brief and useful for a technical stakeholder.
+
     Return exactly this JSON structure:
 
     {
       "score": number,
       "risk_level": "low" | "medium" | "high",
       "issues": ["string"],
-      "recommendations": ["string"]
+      "recommendations": ["string"],
+      "summary": "brief professional summary of the audit result",
+      "technical_observation": "clear technical observation about API design and contract quality",
+      "security_observation": "clear security observation about auth, data exposure or controls",
+      "maintainability_observation": "clear maintainability observation about documentation, consistency and evolution"
     }
 
     Do not include markdown.
@@ -135,7 +170,11 @@ def analyze_with_ollama(prompt: str) -> dict:
             OLLAMA_MODEL,
             OLLAMA_TIMEOUT_SECONDS,
         )
-        logger.debug("Ollama request payload keys=%s prompt_length=%s", list(payload.keys()), len(payload["prompt"]))
+        logger.debug(
+            "Ollama request payload keys=%s prompt_length=%s",
+            list(payload.keys()),
+            len(payload["prompt"]),
+        )
         response = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
         logger.info("Ollama response status_code=%s", response.status_code)
         logger.debug("Ollama response body preview=%s", response.text[:1000])
@@ -150,7 +189,11 @@ def analyze_with_ollama(prompt: str) -> dict:
     try:
         response_data = response.json()
         raw_text = response_data.get("response", "")
-        logger.debug("Ollama parsed response keys=%s response_length=%s", list(response_data.keys()), len(raw_text))
+        logger.debug(
+            "Ollama parsed response keys=%s response_length=%s",
+            list(response_data.keys()),
+            len(raw_text),
+        )
     except ValueError as exc:
         logger.warning("Ollama returned a non-JSON HTTP response: %s", exc, exc_info=True)
         return fallback_analysis(
@@ -182,4 +225,17 @@ def analyze_with_ollama(prompt: str) -> dict:
         "risk_level": risk_level,
         "issues": issues,
         "recommendations": recommendations,
+        "summary": normalize_text(analysis.get("summary"), DEFAULT_SUMMARY),
+        "technical_observation": normalize_text(
+            analysis.get("technical_observation"),
+            DEFAULT_TECHNICAL_OBSERVATION,
+        ),
+        "security_observation": normalize_text(
+            analysis.get("security_observation"),
+            DEFAULT_SECURITY_OBSERVATION,
+        ),
+        "maintainability_observation": normalize_text(
+            analysis.get("maintainability_observation"),
+            DEFAULT_MAINTAINABILITY_OBSERVATION,
+        ),
     }

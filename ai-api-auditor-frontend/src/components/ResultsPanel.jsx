@@ -1,3 +1,5 @@
+import AIObservationCards from "./AIObservationCards";
+
 function ResultsPanel({
   result,
   sectionStyle,
@@ -30,6 +32,8 @@ function ResultsPanel({
 
               <p><b>Resumen:</b> {translate(ep?.summary)}</p>
               <p><b>Puntuación:</b> {ep?.score}</p>
+
+              <AIObservationCards item={ep} translate={translate} />
 
               <h4>Problemas</h4>
               {issues.length > 0 ? (

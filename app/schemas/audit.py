@@ -19,6 +19,10 @@ class AuditAnalysis(BaseModel):
     risk_level: str
     issues: list[str]
     recommendations: list[str]
+    summary: str | None = None
+    technical_observation: str | None = None
+    security_observation: str | None = None
+    maintainability_observation: str | None = None
 
 
 class OpenAPIAuditRequest(BaseModel):
@@ -34,6 +38,9 @@ class OpenAPIEndpointAnalysis(BaseModel):
     risk_level: str
     issues: list[str]
     recommendations: list[str]
+    technical_observation: str | None = None
+    security_observation: str | None = None
+    maintainability_observation: str | None = None
 
 
 class AuditResponse(BaseModel):
@@ -49,6 +56,10 @@ class AuditResponse(BaseModel):
     risk_level: str
     issues: list[str]
     recommendations: list[str]
+    summary: str | None = None
+    technical_observation: str | None = None
+    security_observation: str | None = None
+    maintainability_observation: str | None = None
     created_at: datetime
     total_endpoints: int | None = None
     average_score: float | None = None
@@ -65,4 +76,8 @@ class OpenAPIAuditResponse(BaseModel):
     total_endpoints: int
     average_score: float
     global_risk_level: str
+    summary: str | None = None
+    technical_observation: str | None = None
+    security_observation: str | None = None
+    maintainability_observation: str | None = None
     endpoints: list[OpenAPIEndpointAnalysis]

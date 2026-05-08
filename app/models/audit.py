@@ -25,6 +25,10 @@ class Audit(Base):
 
     issues = Column(Text, nullable=False)
     recommendations = Column(Text, nullable=False)
+    summary = Column(Text, nullable=True)
+    technical_observation = Column(Text, nullable=True)
+    security_observation = Column(Text, nullable=True)
+    maintainability_observation = Column(Text, nullable=True)
 
     total_endpoints = Column(Integer, nullable=True)
     average_score = Column(Float, nullable=True)

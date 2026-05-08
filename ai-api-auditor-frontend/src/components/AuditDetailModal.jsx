@@ -1,3 +1,5 @@
+import AIObservationCards from "./AIObservationCards";
+
 function AuditDetailModal({
   audit,
   onClose,
@@ -29,6 +31,8 @@ function AuditDetailModal({
       <p><b>Fecha:</b> {audit?.created_at}</p>
       <p><b>Puntuación:</b> {audit?.score}</p>
       <p><b>Riesgo:</b> {getRiskLabel(audit?.risk_level)}</p>
+
+      <AIObservationCards item={audit} translate={translate} />
 
       {audit?.total_endpoints !== null && audit?.total_endpoints !== undefined && (
         <>
@@ -80,6 +84,8 @@ function AuditDetailModal({
                 </div>
 
                 <p><b>Puntuación:</b> {endpoint?.score}</p>
+
+                <AIObservationCards item={endpoint} translate={translate} compact />
 
                 <h4>Problemas</h4>
                 {endpointIssues.length > 0 ? (

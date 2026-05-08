@@ -1,6 +1,11 @@
 import json
 
 from app.schemas.audit import AuditAnalysis, ManualAuditRequest
+from app.services.ai_service import (
+    DEFAULT_MAINTAINABILITY_OBSERVATION,
+    DEFAULT_SECURITY_OBSERVATION,
+    DEFAULT_TECHNICAL_OBSERVATION,
+)
 from app.utils.scoring import calculate_risk_level
 
 
@@ -55,4 +60,10 @@ def analyze_manual_audit(data: ManualAuditRequest) -> AuditAnalysis:
         risk_level=risk_level,
         issues=issues,
         recommendations=recommendations,
+        summary=(
+            f"Auditoría manual de {method} {data.path} con puntuación {score}/10 y riesgo {risk_level}."
+        ),
+        technical_observation=DEFAULT_TECHNICAL_OBSERVATION,
+        security_observation=DEFAULT_SECURITY_OBSERVATION,
+        maintainability_observation=DEFAULT_MAINTAINABILITY_OBSERVATION,
     )
