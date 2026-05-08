@@ -10,7 +10,7 @@ El proyecto está pensado como una herramienta práctica para equipos backend y 
 - Auditoría manual de endpoints.
 - Auditoría automática de esquemas OpenAPI.
 - Análisis asistido por IA local usando Ollama.
-- Persistencia de auditorías en SQLite.
+- Persistencia de auditorías en SQLite para desarrollo rápido y PostgreSQL vía Docker Compose.
 - Historial con filtros por riesgo, búsqueda, puntuación mínima y ordenación.
 - Dashboard de métricas históricas.
 - Vista detalle de auditoría con endpoints, problemas y recomendaciones.
@@ -25,7 +25,7 @@ El proyecto está pensado como una herramienta práctica para equipos backend y 
 
 - Backend: FastAPI, SQLAlchemy, Pydantic
 - Frontend: React, Vite
-- Base de datos: SQLite
+- Base de datos: SQLite local/tests, PostgreSQL en Docker Compose
 - Autenticación: JWT, bcrypt/passlib
 - IA local: Ollama (`llama3` por defecto)
 - Migraciones: Alembic
@@ -57,7 +57,7 @@ ai-api-auditor/
 ├── tests/                       # Tests backend
 ├── .github/workflows/           # CI/CD
 ├── Dockerfile                   # Backend Docker
-├── docker-compose.yml           # Backend + frontend local
+├── docker-compose.yml           # PostgreSQL + backend + frontend local
 └── README.md
 ```
 
@@ -133,8 +133,11 @@ python -m venv venv
 venv\Scripts\activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python -m alembic upgrade head
 uvicorn app.main:app --reload
 ```
+
+Por defecto el backend usa SQLite con `DATABASE_URL=sqlite:///./ai_api_auditor.db`, por lo que no necesitas PostgreSQL para desarrollo rápido ni para tests.
 
 Backend disponible en:
 
@@ -182,10 +185,22 @@ docker compose up --build
 
 Servicios:
 
+- PostgreSQL: `localhost:5432`
 - Backend: `http://localhost:8000`
 - Frontend: `http://localhost:4173`
 
+Docker Compose levanta PostgreSQL, espera a que esté saludable y arranca el backend ejecutando `python -m alembic upgrade head` antes de iniciar Uvicorn.
+
 Ollama no se levanta dentro de Docker Compose. Debe estar instalado y ejecutándose localmente. El backend en Docker usa `host.docker.internal:11434` para conectarse a Ollama.
+
+Variables PostgreSQL usadas por Docker Compose:
+
+```env
+POSTGRES_DB=ai_api_auditor
+POSTGRES_USER=ai_api_auditor
+POSTGRES_PASSWORD=ai_api_auditor_password
+DATABASE_URL_DOCKER=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@postgres:5432/ai_api_auditor
+```
 
 ### Migraciones Alembic
 
@@ -231,6 +246,17 @@ OLLAMA_URL=http://localhost:11434/api/generate
 OLLAMA_MODEL=llama3
 OLLAMA_TIMEOUT_SECONDS=60
 ```
+
+Para Docker Compose con PostgreSQL puedes usar estas variables en `.env`:
+
+```env
+POSTGRES_DB=ai_api_auditor
+POSTGRES_USER=ai_api_auditor
+POSTGRES_PASSWORD=ai_api_auditor_password
+DATABASE_URL_DOCKER=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@postgres:5432/ai_api_auditor
+```
+
+No cambies `DATABASE_URL` si quieres seguir usando SQLite en local. Docker Compose usa `DATABASE_URL_DOCKER` para no interferir con el modo local.
 
 ### Frontend
 
@@ -309,7 +335,7 @@ El archivo `ai-api-auditor-frontend/vercel.json` define la salida `dist` y rewri
 ## Próximas mejoras
 
 - Añadir refresh tokens.
-- Persistencia en PostgreSQL para producción.
+- Perfiles Docker separados para desarrollo, CI y producción.
 - Mejorar cobertura de tests y añadir umbrales mínimos.
 - Code splitting para reducir chunk de PDF.
 - Roles de usuario y permisos.

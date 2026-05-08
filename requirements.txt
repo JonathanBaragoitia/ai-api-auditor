@@ -39,3 +39,4 @@ urllib3==2.6.3
 uvicorn==0.46.0
 alembic==1.17.2
 pre-commit==4.5.0
+psycopg2-binary==2.9.11
