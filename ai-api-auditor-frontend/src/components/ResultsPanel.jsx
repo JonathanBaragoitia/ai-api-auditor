@@ -1,5 +1,6 @@
 import AIObservationCards from "./AIObservationCards";
 import IssueList from "./IssueList";
+import { normalizeDisplayScore } from "../utils/display";
 
 function ResultsPanel({
   result,
@@ -32,7 +33,7 @@ function ResultsPanel({
               </div>
 
               <p><b>Resumen:</b> {translate(ep?.summary)}</p>
-              <p><b>Puntuación:</b> {ep?.score}</p>
+              <p><b>Puntuación:</b> {normalizeDisplayScore(ep?.score)}/100</p>
 
               <AIObservationCards item={ep} translate={translate} />
 

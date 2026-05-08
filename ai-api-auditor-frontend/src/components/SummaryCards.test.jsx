@@ -16,7 +16,7 @@ describe("SummaryCards", () => {
     expect(screen.getByText("Endpoints")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("Puntuación")).toBeInTheDocument();
-    expect(screen.getByText("8.4")).toBeInTheDocument();
+    expect(screen.getByText("84/100")).toBeInTheDocument();
     expect(screen.getByText("Riesgo")).toBeInTheDocument();
     expect(screen.getByText("Bajo")).toBeInTheDocument();
   });

@@ -3,6 +3,7 @@ import { useState } from "react";
 import AIObservationCards from "./AIObservationCards";
 import AuditDetailModal from "./AuditDetailModal";
 import IssueList from "./IssueList";
+import { normalizeDisplayScore } from "../utils/display";
 
 const issueToSearchText = (issue) => {
   if (typeof issue === "string") {
@@ -174,7 +175,7 @@ function HistoryList({
               </div>
 
               <p><b>{getFriendlyEndpointName(a?.path)}</b></p>
-              <p>Puntuación: {a?.score}</p>
+              <p>Puntuación: {normalizeDisplayScore(a?.score)}/100</p>
 
               <AIObservationCards item={a} translate={translate} compact />
 

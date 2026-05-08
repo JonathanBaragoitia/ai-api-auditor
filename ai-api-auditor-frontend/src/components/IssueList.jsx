@@ -1,3 +1,5 @@
+import Badge from "./Badge";
+
 function IssueList({ issues, translate }) {
   const normalizedIssues = Array.isArray(issues) ? issues : [];
 
@@ -16,8 +18,8 @@ function IssueList({ issues, translate }) {
               <div style={headerStyle}>
                 <strong>{translate(issue?.title)}</strong>
                 <div style={tagGroupStyle}>
-                  <span style={severityStyle(issue?.severity)}>{translateSeverity(issue?.severity)}</span>
-                  <span style={categoryStyle}>{translateCategory(issue?.category)}</span>
+                  <Badge type="severity" value={issue?.severity} />
+                  <Badge type="category" value={issue?.category} />
                 </div>
               </div>
 
@@ -35,34 +37,6 @@ function IssueList({ issues, translate }) {
     </div>
   );
 }
-
-const translateSeverity = (severity) => ({
-  low: "Baja",
-  medium: "Media",
-  high: "Alta",
-  critical: "Crítica",
-})[severity] || "Media";
-
-const translateCategory = (category) => ({
-  security: "Seguridad",
-  validation: "Validación",
-  documentation: "Documentación",
-  performance: "Rendimiento",
-  rest_design: "Diseño REST",
-  maintainability: "Mantenibilidad",
-  observability: "Observabilidad",
-})[category] || "General";
-
-const severityStyle = (severity) => ({
-  ...tagStyle,
-  background: {
-    low: "#064e3b",
-    medium: "#78350f",
-    high: "#7f1d1d",
-    critical: "#4c0519",
-  }[severity] || "#334155",
-  color: "white",
-});
 
 const listStyle = {
   display: "grid",
@@ -87,19 +61,6 @@ const tagGroupStyle = {
   display: "flex",
   flexWrap: "wrap",
   gap: 6,
-};
-
-const tagStyle = {
-  borderRadius: 999,
-  fontSize: 12,
-  padding: "4px 8px",
-};
-
-const categoryStyle = {
-  ...tagStyle,
-  background: "#1e293b",
-  color: "#cbd5e1",
-  border: "1px solid #334155",
 };
 
 const textStyle = {

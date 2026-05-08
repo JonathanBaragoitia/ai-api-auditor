@@ -17,6 +17,6 @@ describe("AuditForm", () => {
     );
 
     expect(screen.getByPlaceholderText("Pega tu OpenAPI JSON aquí...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "🚀 Analizar API" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analizar API" })).toBeInTheDocument();
   });
 });

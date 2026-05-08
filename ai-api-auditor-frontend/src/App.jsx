@@ -154,16 +154,7 @@ function App() {
               </>
             )}
 
-            {history.length > 0 && (
-              <DashboardStats
-                history={history}
-                getRiskLabel={getRiskLabel}
-                getColor={getColor}
-                statsStyle={stats}
-                miniCardStyle={miniCard}
-                sectionStyle={section}
-              />
-            )}
+            <DashboardStats history={history} sectionStyle={section} />
 
             <HistoryList
               history={history}
@@ -231,8 +222,9 @@ const button = {
 };
 
 const stats = {
-  display: "flex",
+  display: "grid",
   gap: 20,
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
   marginTop: 30,
 };
 
