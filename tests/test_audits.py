@@ -267,6 +267,8 @@ def test_openapi_audit_returns_total_endpoints(monkeypatch):
     assert isinstance(data["id"], int)
     assert data["total_endpoints"] == 1
     assert isinstance(data["endpoints"], list)
+    assert data["status"] == "completed"
+    assert data["error_message"] is None
 
 
 def test_openapi_audit_rate_limited(monkeypatch):
@@ -345,8 +347,30 @@ def test_openapi_audit_is_persisted_in_history(monkeypatch):
     assert list_response.status_code == 200
     assert history_item["total_endpoints"] == 1
     assert isinstance(history_item["endpoints"], list)
+    assert history_item["status"] == "completed"
     assert detail["name"] == payload["name"]
     assert detail["endpoints"][0]["path"] == "/users"
+
+
+def test_openapi_audit_failed_status_is_stored_in_history():
+    app.dependency_overrides[get_db] = override_get_db
+
+    payload = {
+        "name": "OpenAPI fallida",
+        "openapi_schema": {"openapi": "3.0.0", "info": {"title": "Demo", "version": "1.0.0"}},
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/openapi", json=payload, headers=headers)
+        list_response = client.get("/audits/", headers=headers)
+
+    failed_audit = list_response.json()[0]
+
+    assert create_response.status_code == 400
+    assert failed_audit["name"] == payload["name"]
+    assert failed_audit["status"] == "failed"
+    assert "paths" in failed_audit["error_message"]
 
 
 def test_openapi_audit_rejects_schema_without_paths():

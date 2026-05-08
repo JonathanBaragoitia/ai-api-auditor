@@ -51,6 +51,25 @@ export function normalizeCategory(value) {
   }[category] || category || "general";
 }
 
+export function normalizeStatus(value) {
+  const status = normalizeToken(value);
+
+  return {
+    pendiente: "pending",
+    pending: "pending",
+    "en ejecución": "running",
+    ejecucion: "running",
+    ejecución: "running",
+    running: "running",
+    completada: "completed",
+    completado: "completed",
+    completed: "completed",
+    fallida: "failed",
+    fallido: "failed",
+    failed: "failed",
+  }[status] || status || "completed";
+}
+
 export function getRiskLabel(risk) {
   return {
     low: "Bajo",
@@ -79,4 +98,13 @@ export function getCategoryLabel(category) {
     maintainability: "Mantenibilidad",
     observability: "Observabilidad",
   }[normalizeCategory(category)] || "General";
+}
+
+export function getStatusLabel(status) {
+  return {
+    pending: "Pendiente",
+    running: "En ejecución",
+    completed: "Completada",
+    failed: "Fallida",
+  }[normalizeStatus(status)] || "Completada";
 }

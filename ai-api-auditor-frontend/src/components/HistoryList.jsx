@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import AIObservationCards from "./AIObservationCards";
 import AuditDetailModal from "./AuditDetailModal";
+import Badge from "./Badge";
 import IssueList from "./IssueList";
 import { normalizeDisplayScore } from "../utils/display";
 
@@ -67,6 +68,8 @@ function HistoryList({
         audit?.path,
         getFriendlyEndpointName(audit?.path),
         audit?.method,
+        audit?.status,
+        audit?.error_message,
         audit?.summary,
         audit?.technical_observation,
         audit?.security_observation,
@@ -171,11 +174,15 @@ function HistoryList({
             <div key={a?.id} style={cardStyle}>
               <div style={rowStyle}>
                 <h3>{translate(a?.name)}</h3>
-                <span style={{ color: getColor(a?.risk_level) }}>{getRiskLabel(a?.risk_level)}</span>
+                <div style={statusGroupStyle}>
+                  <Badge type="status" value={a?.status} />
+                  <span style={{ color: getColor(a?.risk_level) }}>{getRiskLabel(a?.risk_level)}</span>
+                </div>
               </div>
 
               <p><b>{getFriendlyEndpointName(a?.path)}</b></p>
               <p>Puntuación: {normalizeDisplayScore(a?.score)}/100</p>
+              {a?.error_message && <p style={errorStyle}>{translate(a.error_message)}</p>}
 
               <AIObservationCards item={a} translate={translate} compact />
 
@@ -292,6 +299,21 @@ const emptyState = {
 const emptyIcon = {
   fontSize: 34,
   margin: 0,
+};
+
+const statusGroupStyle = {
+  alignItems: "center",
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+};
+
+const errorStyle = {
+  background: "#7f1d1d",
+  border: "1px solid #b91c1c",
+  borderRadius: 10,
+  color: "#fecaca",
+  padding: 10,
 };
 
 export default HistoryList;

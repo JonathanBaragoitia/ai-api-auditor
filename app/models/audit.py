@@ -39,4 +39,7 @@ class Audit(Base):
     global_risk_level = Column(String(50), nullable=True)
     openapi_endpoints = Column(Text, nullable=True)
 
+    status = Column(String(20), nullable=False, default="completed")
+    error_message = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)

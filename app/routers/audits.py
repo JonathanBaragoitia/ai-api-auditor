@@ -57,6 +57,8 @@ def parse_audit(audit: Audit) -> AuditResponse:
         average_score=audit.average_score,
         global_risk_level=audit.global_risk_level,
         endpoints=json.loads(audit.openapi_endpoints) if audit.openapi_endpoints else None,
+        status=audit.status or "completed",
+        error_message=audit.error_message,
     )
 
 
@@ -236,17 +238,6 @@ def create_openapi_audit(
     rate_limit_ai_audit(request, current_user)
 
     logger.info("Starting OpenAPI audit: name=%s", data.name)
-    try:
-        endpoints = validate_openapi_schema(data.openapi_schema)
-    except OpenAPIValidationError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-
-    endpoint_results = analyze_openapi_schema(data.openapi_schema, endpoints=endpoints)
-
-    average_score, global_risk_level = calculate_global_audit_result(endpoint_results)
-    observations = build_global_observations(endpoint_results)
-
-    endpoints_data = [endpoint.model_dump() for endpoint in endpoint_results]
     audit = Audit(
         user_id=current_user.id,
         name=data.name,
@@ -256,22 +247,56 @@ def create_openapi_audit(
         auth_required="true",
         request_example=None,
         response_example=None,
-        score=average_score,
-        risk_level=global_risk_level,
+        score=0.0,
+        risk_level="high",
         issues=json.dumps([]),
         recommendations=json.dumps([]),
-        summary=observations["summary"],
-        technical_observation=observations["technical_observation"],
-        security_observation=observations["security_observation"],
-        maintainability_observation=observations["maintainability_observation"],
-        total_endpoints=len(endpoint_results),
-        average_score=average_score,
-        global_risk_level=global_risk_level,
-        openapi_endpoints=json.dumps(endpoints_data),
+        total_endpoints=0,
+        average_score=0.0,
+        global_risk_level="high",
+        openapi_endpoints=json.dumps([]),
+        status="running",
     )
 
+    db.add(audit)
+    db.commit()
+    db.refresh(audit)
+
     try:
-        db.add(audit)
+        endpoints = validate_openapi_schema(data.openapi_schema)
+    except OpenAPIValidationError as exc:
+        audit.status = "failed"
+        audit.error_message = str(exc)
+        db.commit()
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    try:
+        endpoint_results = analyze_openapi_schema(data.openapi_schema, endpoints=endpoints)
+    except Exception as exc:
+        audit.status = "failed"
+        audit.error_message = "No se pudo completar la auditoría OpenAPI. Revisa los logs del backend."
+        db.commit()
+        logger.exception("OpenAPI audit failed during analysis: id=%s", audit.id)
+        raise HTTPException(status_code=500, detail=audit.error_message) from exc
+
+    average_score, global_risk_level = calculate_global_audit_result(endpoint_results)
+    observations = build_global_observations(endpoint_results)
+
+    endpoints_data = [endpoint.model_dump() for endpoint in endpoint_results]
+    audit.score = average_score
+    audit.risk_level = global_risk_level
+    audit.summary = observations["summary"]
+    audit.technical_observation = observations["technical_observation"]
+    audit.security_observation = observations["security_observation"]
+    audit.maintainability_observation = observations["maintainability_observation"]
+    audit.total_endpoints = len(endpoint_results)
+    audit.average_score = average_score
+    audit.global_risk_level = global_risk_level
+    audit.openapi_endpoints = json.dumps(endpoints_data)
+    audit.status = "completed"
+    audit.error_message = None
+
+    try:
         db.commit()
         db.refresh(audit)
     except SQLAlchemyError as exc:
@@ -299,4 +324,6 @@ def create_openapi_audit(
         security_observation=observations["security_observation"],
         maintainability_observation=observations["maintainability_observation"],
         endpoints=endpoint_results,
+        status=audit.status,
+        error_message=audit.error_message,
     )

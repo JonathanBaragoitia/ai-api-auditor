@@ -2,9 +2,11 @@ import {
   getCategoryLabel,
   getRiskLabel,
   getSeverityLabel,
+  getStatusLabel,
   normalizeCategory,
   normalizeRisk,
   normalizeSeverity,
+  normalizeStatus,
 } from "../utils/display";
 
 function Badge({ type = "default", value }) {
@@ -18,6 +20,7 @@ function getNormalizedValue(type, value) {
   if (type === "risk") return normalizeRisk(value);
   if (type === "severity") return normalizeSeverity(value);
   if (type === "category") return normalizeCategory(value);
+  if (type === "status") return normalizeStatus(value);
   return "default";
 }
 
@@ -25,6 +28,7 @@ function getLabel(type, value) {
   if (type === "risk") return getRiskLabel(value);
   if (type === "severity") return getSeverityLabel(value);
   if (type === "category") return getCategoryLabel(value);
+  if (type === "status") return getStatusLabel(value);
   return value || "-";
 }
 
@@ -41,6 +45,10 @@ function paletteStyle(value) {
     rest_design: { background: "#1e3a8a", color: "#bfdbfe", borderColor: "#2563eb" },
     maintainability: { background: "#581c87", color: "#e9d5ff", borderColor: "#9333ea" },
     observability: { background: "#134e4a", color: "#ccfbf1", borderColor: "#0d9488" },
+    pending: { background: "#1e293b", color: "#cbd5e1", borderColor: "#64748b" },
+    running: { background: "#1e3a8a", color: "#bfdbfe", borderColor: "#3b82f6" },
+    completed: { background: "#064e3b", color: "#bbf7d0", borderColor: "#047857" },
+    failed: { background: "#7f1d1d", color: "#fecaca", borderColor: "#b91c1c" },
   }[value] || { background: "#1e293b", color: "#cbd5e1", borderColor: "#334155" };
 }
 

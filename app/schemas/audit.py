@@ -1,7 +1,10 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+
+AuditStatus = Literal["pending", "running", "completed", "failed"]
 
 
 class StructuredIssue(BaseModel):
@@ -73,6 +76,8 @@ class AuditResponse(BaseModel):
     average_score: float | None = None
     global_risk_level: str | None = None
     endpoints: list[OpenAPIEndpointAnalysis] | None = None
+    status: AuditStatus = "completed"
+    error_message: str | None = None
 
     class Config:
         from_attributes = True
@@ -89,3 +94,5 @@ class OpenAPIAuditResponse(BaseModel):
     security_observation: str | None = None
     maintainability_observation: str | None = None
     endpoints: list[OpenAPIEndpointAnalysis]
+    status: AuditStatus = "completed"
+    error_message: str | None = None

@@ -24,6 +24,8 @@ describe("HistoryList", () => {
             risk_level: "low",
             issues: [],
             recommendations: [],
+            status: "failed",
+            error_message: "No se pudo completar la auditoría.",
             created_at: "2026-05-07T00:00:00",
           },
         ]}
@@ -34,6 +36,8 @@ describe("HistoryList", () => {
     expect(screen.getByText("Historial")).toBeInTheDocument();
     expect(screen.getByText("Auditoría usuarios")).toBeInTheDocument();
     expect(screen.getByText("Usuarios")).toBeInTheDocument();
+    expect(screen.getByText("Fallida")).toBeInTheDocument();
+    expect(screen.getByText("No se pudo completar la auditoría.")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Buscar auditoría, endpoint o recomendación...")).toBeInTheDocument();
     expect(screen.getByText("Puntuación mínima: 0")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver detalle" })).toBeInTheDocument();
