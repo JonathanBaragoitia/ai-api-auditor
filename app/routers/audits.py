@@ -1,12 +1,13 @@
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user
+from app.dependencies.rate_limit import rate_limit_ai_audit
 from app.db.database import get_db
 from app.models.audit import Audit
 from app.models.user import User
@@ -19,9 +20,11 @@ from app.schemas.audit import (
     OpenAPIAuditResponse,
 )
 from app.services.openapi_service import (
+    OpenAPIValidationError,
     analyze_openapi_schema,
     build_global_observations,
     calculate_global_audit_result,
+    validate_openapi_schema,
 )
 
 
@@ -140,7 +143,12 @@ def create_manual_audit(
 
 
 @router.post("/ai-test")
-def ai_test(_current_user: User = Depends(get_current_user)):
+def ai_test(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    rate_limit_ai_audit(request, current_user)
+
     prompt = """
     Endpoint:
     GET /users
@@ -158,10 +166,13 @@ def ai_test(_current_user: User = Depends(get_current_user)):
 
 @router.post("/manual-ai", response_model=AuditResponse, status_code=201)
 def create_manual_ai_audit(
+    request: Request,
     data: ManualAuditRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    rate_limit_ai_audit(request, current_user)
+
     prompt = f"""
     Endpoint:
     {data.method} {data.path}
@@ -217,12 +228,20 @@ def create_manual_ai_audit(
 
 @router.post("/openapi", response_model=OpenAPIAuditResponse)
 def create_openapi_audit(
+    request: Request,
     data: OpenAPIAuditRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    rate_limit_ai_audit(request, current_user)
+
     logger.info("Starting OpenAPI audit: name=%s", data.name)
-    endpoint_results = analyze_openapi_schema(data.openapi_schema)
+    try:
+        endpoints = validate_openapi_schema(data.openapi_schema)
+    except OpenAPIValidationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    endpoint_results = analyze_openapi_schema(data.openapi_schema, endpoints=endpoints)
 
     average_score, global_risk_level = calculate_global_audit_result(endpoint_results)
     observations = build_global_observations(endpoint_results)

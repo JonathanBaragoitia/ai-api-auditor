@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.database import Base, get_db
+from app.dependencies.rate_limit import clear_rate_limits
 from app.main import app
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
@@ -26,11 +27,13 @@ def override_get_db():
 
 def setup_function():
     # Aislamiento por test para evitar fugas de estado entre casos.
+    clear_rate_limits()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 
 def teardown_function():
+    clear_rate_limits()
     Base.metadata.drop_all(bind=engine)
     app.dependency_overrides.clear()
 
@@ -67,3 +70,27 @@ def test_login_with_wrong_password_returns_401():
         )
 
     assert login_response.status_code == 401
+
+
+def test_login_rate_limited(monkeypatch):
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.dependencies.rate_limit.settings.RATE_LIMIT_LOGIN_REQUESTS", 2)
+
+    with TestClient(app) as client:
+        client.post(
+            "/auth/register",
+            json={"email": "jonathan@example.com", "password": "Jonathan1234"},
+        )
+
+        responses = [
+            client.post(
+                "/auth/login",
+                json={"email": "jonathan@example.com", "password": "wrong-pass"},
+            )
+            for _ in range(3)
+        ]
+
+    assert responses[0].status_code == 401
+    assert responses[1].status_code == 401
+    assert responses[2].status_code == 429
+    assert responses[2].json()["detail"] == "Demasiadas solicitudes. Inténtalo de nuevo en unos minutos."

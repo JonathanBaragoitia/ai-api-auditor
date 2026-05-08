@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    MAX_OPENAPI_SIZE_CHARS: int = 200000
+    MAX_OPENAPI_ENDPOINTS: int = 50
+    MAX_OPENAPI_OPERATIONS_PER_PATH: int = 5
+    RATE_LIMIT_LOGIN_REQUESTS: int = 5
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_AI_REQUESTS: int = 10
+    RATE_LIMIT_AI_WINDOW_SECONDS: int = 300
 
     @property
     def cors_origins_list(self) -> list[str]:

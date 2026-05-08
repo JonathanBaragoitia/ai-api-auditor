@@ -3,7 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core.config import settings
 from app.db.database import Base, get_db
+from app.dependencies.rate_limit import clear_rate_limits
 from app.main import app
 from app.models.audit import Audit
 from app.schemas.audit import OpenAPIEndpointAnalysis
@@ -28,11 +30,13 @@ def override_get_db():
 
 
 def setup_function():
+    clear_rate_limits()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 
 def teardown_function():
+    clear_rate_limits()
     Base.metadata.drop_all(bind=engine)
     app.dependency_overrides.clear()
 
@@ -221,7 +225,7 @@ def test_user_cannot_access_other_user_audit_detail():
 
 
 def test_openapi_audit_returns_total_endpoints(monkeypatch):
-    def fake_analyze_openapi_schema(_openapi_schema):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None):
         return [
             OpenAPIEndpointAnalysis(
                 method="GET",
@@ -265,8 +269,45 @@ def test_openapi_audit_returns_total_endpoints(monkeypatch):
     assert isinstance(data["endpoints"], list)
 
 
+def test_openapi_audit_rate_limited(monkeypatch):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None):
+        return [
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/users",
+                summary="Lista usuarios",
+                score=8.5,
+                risk_level="low",
+                issues=[],
+                recommendations=["Mantener buenas prácticas"],
+            )
+        ]
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(settings, "RATE_LIMIT_AI_REQUESTS", 1)
+    monkeypatch.setattr("app.routers.audits.analyze_openapi_schema", fake_analyze_openapi_schema)
+
+    payload = {
+        "name": "OpenAPI rate limit",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        first_response = client.post("/audits/openapi", json=payload, headers=headers)
+        second_response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert second_response.json()["detail"] == "Demasiadas solicitudes. Inténtalo de nuevo en unos minutos."
+
+
 def test_openapi_audit_is_persisted_in_history(monkeypatch):
-    def fake_analyze_openapi_schema(_openapi_schema):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None):
         return [
             OpenAPIEndpointAnalysis(
                 method="GET",
@@ -306,6 +347,83 @@ def test_openapi_audit_is_persisted_in_history(monkeypatch):
     assert isinstance(history_item["endpoints"], list)
     assert detail["name"] == payload["name"]
     assert detail["endpoints"][0]["path"] == "/users"
+
+
+def test_openapi_audit_rejects_schema_without_paths():
+    app.dependency_overrides[get_db] = override_get_db
+
+    payload = {
+        "name": "OpenAPI sin paths",
+        "openapi_schema": {"openapi": "3.0.0", "info": {"title": "Demo", "version": "1.0.0"}},
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    assert response.status_code == 400
+    assert "paths" in response.json()["detail"]
+
+
+def test_openapi_audit_rejects_empty_paths():
+    app.dependency_overrides[get_db] = override_get_db
+
+    payload = {
+        "name": "OpenAPI vacío",
+        "openapi_schema": {"openapi": "3.0.0", "info": {"title": "Demo", "version": "1.0.0"}, "paths": {}},
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    assert response.status_code == 400
+    assert "al menos un endpoint válido" in response.json()["detail"]
+
+
+def test_openapi_audit_rejects_too_large_schema(monkeypatch):
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(settings, "MAX_OPENAPI_SIZE_CHARS", 120)
+
+    payload = {
+        "name": "OpenAPI grande",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo", "version": "1.0.0", "description": "x" * 200},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    assert response.status_code == 413
+    assert "tamaño máximo" in response.json()["detail"]
+
+
+def test_openapi_audit_rejects_too_many_endpoints(monkeypatch):
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(settings, "MAX_OPENAPI_ENDPOINTS", 1)
+
+    payload = {
+        "name": "OpenAPI demasiados endpoints",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "ok"}}}},
+                "/orders": {"get": {"responses": {"200": {"description": "ok"}}}},
+            },
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    assert response.status_code == 400
+    assert "número máximo de endpoints" in response.json()["detail"]
 
 
 def test_openapi_audit_uses_safe_fallback_when_ai_response_is_invalid(monkeypatch):

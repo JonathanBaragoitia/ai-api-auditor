@@ -1,5 +1,7 @@
+import json
 import logging
 
+from app.core.config import settings
 from app.schemas.audit import OpenAPIEndpointAnalysis
 from app.services.ai_service import (
     DEFAULT_MAINTAINABILITY_OBSERVATION,
@@ -15,6 +17,13 @@ from app.services.ai_service import (
 from app.utils.scoring import calculate_risk_level
 
 logger = logging.getLogger(__name__)
+VALID_REST_METHODS = {"get", "post", "put", "patch", "delete"}
+
+
+class OpenAPIValidationError(ValueError):
+    def __init__(self, message: str, status_code: int = 400):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def fallback_endpoint_analysis(
@@ -46,15 +55,13 @@ def extract_openapi_endpoints(openapi_schema: dict) -> list[dict]:
 
     endpoints = []
 
-    valid_methods = {"get", "post", "put", "patch", "delete"}
-
     for path, methods in paths.items():
         if not isinstance(methods, dict):
             logger.warning("Skipping invalid OpenAPI path item for path %s", path)
             continue
 
         for method, details in methods.items():
-            if method.lower() not in valid_methods:
+            if method.lower() not in VALID_REST_METHODS:
                 continue
 
             if not isinstance(details, dict):
@@ -75,8 +82,59 @@ def extract_openapi_endpoints(openapi_schema: dict) -> list[dict]:
     return endpoints
 
 
-def analyze_openapi_schema(openapi_schema: dict) -> list[OpenAPIEndpointAnalysis]:
+def validate_openapi_schema(openapi_schema: dict) -> list[dict]:
+    try:
+        schema_size = len(json.dumps(openapi_schema, ensure_ascii=False))
+    except (TypeError, ValueError) as exc:
+        raise OpenAPIValidationError("El documento OpenAPI no se pudo serializar como JSON válido.") from exc
+
+    if schema_size > settings.MAX_OPENAPI_SIZE_CHARS:
+        raise OpenAPIValidationError(
+            (
+                "El documento OpenAPI supera el tamaño máximo permitido "
+                f"({settings.MAX_OPENAPI_SIZE_CHARS} caracteres)."
+            ),
+            status_code=413,
+        )
+
+    if "paths" not in openapi_schema:
+        raise OpenAPIValidationError("El documento OpenAPI debe incluir el campo 'paths'.")
+
+    paths = openapi_schema.get("paths")
+    if not isinstance(paths, dict):
+        raise OpenAPIValidationError("El campo 'paths' del documento OpenAPI debe ser un objeto.")
+
     endpoints = extract_openapi_endpoints(openapi_schema)
+
+    if not endpoints:
+        raise OpenAPIValidationError("El documento OpenAPI debe incluir al menos un endpoint válido.")
+
+    if len(endpoints) > settings.MAX_OPENAPI_ENDPOINTS:
+        raise OpenAPIValidationError(
+            (
+                "El documento OpenAPI supera el número máximo de endpoints permitidos "
+                f"({settings.MAX_OPENAPI_ENDPOINTS})."
+            )
+        )
+
+    for path, methods in paths.items():
+        if not isinstance(methods, dict):
+            continue
+
+        operation_count = sum(1 for method in methods if method.lower() in VALID_REST_METHODS)
+        if operation_count > settings.MAX_OPENAPI_OPERATIONS_PER_PATH:
+            raise OpenAPIValidationError(
+                (
+                    f"El path '{path}' supera el máximo de operaciones permitidas "
+                    f"({settings.MAX_OPENAPI_OPERATIONS_PER_PATH})."
+                )
+            )
+
+    return endpoints
+
+
+def analyze_openapi_schema(openapi_schema: dict, endpoints: list[dict] | None = None) -> list[OpenAPIEndpointAnalysis]:
+    endpoints = endpoints if endpoints is not None else extract_openapi_endpoints(openapi_schema)
 
     results = []
 

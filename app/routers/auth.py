@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.db.database import get_db
+from app.dependencies.rate_limit import rate_limit_login
 from app.models.user import User
 from app.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
 
@@ -31,7 +32,11 @@ def register(data: UserRegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(data: UserLoginRequest, db: Session = Depends(get_db)):
+def login(
+    data: UserLoginRequest,
+    db: Session = Depends(get_db),
+    _rate_limit: None = Depends(rate_limit_login),
+):
     email = data.email.strip().lower()
     user = db.query(User).filter(User.email == email).first()
 
