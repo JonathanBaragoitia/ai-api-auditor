@@ -34,8 +34,8 @@ describe("HistoryList", () => {
     expect(screen.getByText("Historial")).toBeInTheDocument();
     expect(screen.getByText("Auditoría usuarios")).toBeInTheDocument();
     expect(screen.getByText("Usuarios")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Buscar por nombre, ruta o endpoint...")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Puntuación mínima")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Buscar auditoría, endpoint o recomendación...")).toBeInTheDocument();
+    expect(screen.getByText("Puntuación mínima: 0")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver detalle" })).toBeInTheDocument();
   });
 });
