@@ -90,6 +90,26 @@ def test_create_manual_audit_success():
     assert "score" in data
 
 
+def test_manual_audit_returns_structured_issue():
+    app.dependency_overrides[get_db] = override_get_db
+
+    payload = manual_audit_payload()
+    payload["auth_required"] = False
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/manual", json=payload, headers=headers)
+
+    issue = response.json()["issues"][0]
+
+    assert response.status_code == 201
+    assert issue["title"] == "Falta autenticación"
+    assert issue["severity"] == "high"
+    assert issue["category"] == "security"
+    assert "evidence" in issue
+    assert "recommendation" in issue
+
+
 def test_create_manual_audit_is_associated_to_authenticated_user():
     app.dependency_overrides[get_db] = override_get_db
 
@@ -319,3 +339,51 @@ def test_openapi_audit_uses_safe_fallback_when_ai_response_is_invalid(monkeypatc
     assert data["total_endpoints"] == 1
     assert data["endpoints"][0]["score"] == 5.0
     assert data["endpoints"][0]["risk_level"] == "medium"
+    assert data["endpoints"][0]["issues"][0]["title"] == "invalid-json-from-ai"
+    assert data["endpoints"][0]["issues"][0]["severity"] == "medium"
+
+
+def test_openapi_audit_accepts_structured_ai_issues(monkeypatch):
+    def fake_analyze_with_ollama(_prompt):
+        return {
+            "score": 4,
+            "risk_level": "high",
+            "issues": [
+                {
+                    "title": "Falta autenticación",
+                    "severity": "critical",
+                    "category": "security",
+                    "evidence": "GET /users no declara security scheme.",
+                    "recommendation": "Añadir autenticación JWT u OAuth2.",
+                }
+            ],
+            "recommendations": ["Añadir controles de acceso."],
+            "summary": "Endpoint con exposición sensible.",
+            "technical_observation": "El contrato requiere controles explícitos.",
+            "security_observation": "Existe riesgo de acceso no autorizado.",
+            "maintainability_observation": "Documentar el esquema de seguridad mejora la mantenibilidad.",
+        }
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.services.openapi_service.analyze_with_ollama", fake_analyze_with_ollama)
+
+    payload = {
+        "name": "OpenAPI con issue estructurado",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    issue = response.json()["endpoints"][0]["issues"][0]
+
+    assert response.status_code == 200
+    assert issue["title"] == "Falta autenticación"
+    assert issue["severity"] == "critical"
+    assert issue["category"] == "security"
+    assert issue["recommendation"] == "Añadir autenticación JWT u OAuth2."

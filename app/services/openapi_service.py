@@ -8,6 +8,9 @@ from app.services.ai_service import (
     DEFAULT_TECHNICAL_OBSERVATION,
     SPANISH_OUTPUT_INSTRUCTIONS,
     analyze_with_ollama,
+    build_structured_issue,
+    normalize_issues,
+    normalize_recommendations,
 )
 from app.utils.scoring import calculate_risk_level
 
@@ -25,7 +28,7 @@ def fallback_endpoint_analysis(
         summary=DEFAULT_SUMMARY,
         score=5.0,
         risk_level="medium",
-        issues=[issue],
+        issues=[build_structured_issue(issue, "medium", "maintainability", issue, recommendation)],
         recommendations=[recommendation],
         technical_observation=DEFAULT_TECHNICAL_OBSERVATION,
         security_observation=DEFAULT_SECURITY_OBSERVATION,
@@ -92,21 +95,20 @@ def analyze_openapi_schema(openapi_schema: dict) -> list[OpenAPIEndpointAnalysis
 
         Evalúa diseño REST, seguridad, paginación, documentación y buenas prácticas.
         Si el resumen original está en inglés, genera un summary en español profesional.
-        Devuelve issues, recommendations y observaciones narrativas siempre en español.
+        Devuelve issues estructurados, recommendations y observaciones narrativas siempre en español.
+        Cada issue debe incluir title, severity, category, evidence y recommendation.
         """
 
         try:
             analysis = analyze_with_ollama(prompt)
-            score = float(analysis.get("score", 5))
+            try:
+                score = float(analysis.get("score", 5))
+            except (TypeError, ValueError):
+                logger.warning("Ollama returned an invalid score for %s %s", endpoint["method"], endpoint["path"])
+                score = 5.0
             risk_level = analysis.get("risk_level") or "medium"
-            issues = analysis.get("issues", [])
-            recommendations = analysis.get("recommendations", [])
-
-            if not isinstance(issues, list):
-                issues = [str(issues)]
-
-            if not isinstance(recommendations, list):
-                recommendations = [str(recommendations)]
+            recommendations = normalize_recommendations(analysis.get("recommendations", []))
+            issues = normalize_issues(analysis.get("issues", []), recommendations)
 
             results.append(
                 OpenAPIEndpointAnalysis(

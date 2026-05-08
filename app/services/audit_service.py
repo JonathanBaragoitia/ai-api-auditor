@@ -5,21 +5,31 @@ from app.services.ai_service import (
     DEFAULT_MAINTAINABILITY_OBSERVATION,
     DEFAULT_SECURITY_OBSERVATION,
     DEFAULT_TECHNICAL_OBSERVATION,
+    build_structured_issue,
 )
 from app.utils.scoring import calculate_risk_level
 
 
 def analyze_manual_audit(data: ManualAuditRequest) -> AuditAnalysis:
     score = 10.0
-    issues: list[str] = []
+    issues: list[dict[str, str]] = []
     recommendations: list[str] = []
 
     method = data.method.upper()
 
     if not data.auth_required:
         score -= 2
-        issues.append("El endpoint no requiere autenticación.")
-        recommendations.append("Añadir autenticación, por ejemplo JWT o API Key.")
+        recommendation = "Añadir autenticación, por ejemplo JWT o API Key."
+        issues.append(
+            build_structured_issue(
+                "Falta autenticación",
+                "high",
+                "security",
+                f"{method} {data.path} no requiere autenticación.",
+                recommendation,
+            )
+        )
+        recommendations.append(recommendation)
 
     if method == "GET" and data.response_example:
         response_text = json.dumps(data.response_example).lower()
@@ -27,23 +37,59 @@ def analyze_manual_audit(data: ManualAuditRequest) -> AuditAnalysis:
         if "list" in response_text or "users" in response_text or "[" in response_text:
             if "page" not in response_text and "limit" not in response_text:
                 score -= 1.5
-                issues.append("No se detecta paginación en una respuesta tipo listado.")
-                recommendations.append("Añadir paginación con parámetros como page, limit o offset.")
+                recommendation = "Añadir paginación con parámetros como page, limit o offset."
+                issues.append(
+                    build_structured_issue(
+                        "Falta paginación",
+                        "medium",
+                        "performance",
+                        "La respuesta parece devolver un listado sin metadatos o parámetros de paginación.",
+                        recommendation,
+                    )
+                )
+                recommendations.append(recommendation)
 
     if not data.description:
         score -= 1
-        issues.append("El endpoint no tiene descripción funcional.")
-        recommendations.append("Añadir una descripción clara del propósito del endpoint.")
+        recommendation = "Añadir una descripción clara del propósito del endpoint."
+        issues.append(
+            build_structured_issue(
+                "Falta descripción funcional",
+                "low",
+                "documentation",
+                "La auditoría manual no incluye una descripción funcional del endpoint.",
+                recommendation,
+            )
+        )
+        recommendations.append(recommendation)
 
     if not data.path.startswith("/"):
         score -= 1
-        issues.append("La ruta no empieza por '/'.")
-        recommendations.append("Usar rutas REST claras, por ejemplo /users o /reports.")
+        recommendation = "Usar rutas REST claras, por ejemplo /users o /reports."
+        issues.append(
+            build_structured_issue(
+                "Ruta REST inválida",
+                "medium",
+                "rest_design",
+                f"La ruta {data.path} no empieza por '/'.",
+                recommendation,
+            )
+        )
+        recommendations.append(recommendation)
 
     if method not in ["GET", "POST", "PUT", "PATCH", "DELETE"]:
         score -= 1
-        issues.append("El método HTTP no es estándar.")
-        recommendations.append("Usar métodos HTTP estándar como GET, POST, PUT, PATCH o DELETE.")
+        recommendation = "Usar métodos HTTP estándar como GET, POST, PUT, PATCH o DELETE."
+        issues.append(
+            build_structured_issue(
+                "Método HTTP no estándar",
+                "medium",
+                "rest_design",
+                f"El método {method} no pertenece al conjunto HTTP esperado para APIs REST.",
+                recommendation,
+            )
+        )
+        recommendations.append(recommendation)
 
     if score < 0:
         score = 0
@@ -52,8 +98,17 @@ def analyze_manual_audit(data: ManualAuditRequest) -> AuditAnalysis:
     risk_level = calculate_risk_level(score)
 
     if not issues:
-        issues.append("No se han detectado problemas importantes.")
-        recommendations.append("Mantener buenas prácticas de documentación, seguridad y testing.")
+        recommendation = "Mantener buenas prácticas de documentación, seguridad y testing."
+        issues.append(
+            build_structured_issue(
+                "Sin problemas relevantes",
+                "low",
+                "maintainability",
+                "No se han detectado problemas importantes con las reglas actuales.",
+                recommendation,
+            )
+        )
+        recommendations.append(recommendation)
 
     return AuditAnalysis(
         score=score,

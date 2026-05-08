@@ -4,6 +4,14 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class StructuredIssue(BaseModel):
+    title: str
+    severity: str
+    category: str
+    evidence: str
+    recommendation: str
+
+
 class ManualAuditRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=150)
     method: str = Field(..., examples=["GET", "POST", "PUT", "DELETE"])
@@ -17,8 +25,8 @@ class ManualAuditRequest(BaseModel):
 class AuditAnalysis(BaseModel):
     score: float
     risk_level: str
-    issues: list[str]
-    recommendations: list[str]
+    issues: list[str | StructuredIssue]
+    recommendations: list[str | dict[str, Any]]
     summary: str | None = None
     technical_observation: str | None = None
     security_observation: str | None = None
@@ -36,8 +44,8 @@ class OpenAPIEndpointAnalysis(BaseModel):
     summary: str | None = None
     score: float
     risk_level: str
-    issues: list[str]
-    recommendations: list[str]
+    issues: list[str | StructuredIssue]
+    recommendations: list[str | dict[str, Any]]
     technical_observation: str | None = None
     security_observation: str | None = None
     maintainability_observation: str | None = None
@@ -54,8 +62,8 @@ class AuditResponse(BaseModel):
     response_example: dict[str, Any] | None
     score: float
     risk_level: str
-    issues: list[str]
-    recommendations: list[str]
+    issues: list[str | StructuredIssue]
+    recommendations: list[str | dict[str, Any]]
     summary: str | None = None
     technical_observation: str | None = None
     security_observation: str | None = None

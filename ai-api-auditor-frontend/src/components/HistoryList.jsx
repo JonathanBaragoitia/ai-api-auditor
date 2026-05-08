@@ -2,6 +2,21 @@ import { useState } from "react";
 
 import AIObservationCards from "./AIObservationCards";
 import AuditDetailModal from "./AuditDetailModal";
+import IssueList from "./IssueList";
+
+const issueToSearchText = (issue) => {
+  if (typeof issue === "string") {
+    return issue;
+  }
+
+  if (issue && typeof issue === "object") {
+    return [issue.title, issue.severity, issue.category, issue.evidence, issue.recommendation]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  return "";
+};
 
 function HistoryList({
   history,
@@ -41,7 +56,7 @@ function HistoryList({
               endpoint?.technical_observation,
               endpoint?.security_observation,
               endpoint?.maintainability_observation,
-              ...(Array.isArray(endpoint?.issues) ? endpoint.issues : []),
+              ...(Array.isArray(endpoint?.issues) ? endpoint.issues.map(issueToSearchText) : []),
               ...(Array.isArray(endpoint?.recommendations) ? endpoint.recommendations : []),
             ].filter(Boolean).join(" "))
             .join(" ")
@@ -55,7 +70,7 @@ function HistoryList({
         audit?.technical_observation,
         audit?.security_observation,
         audit?.maintainability_observation,
-        ...(Array.isArray(audit?.issues) ? audit.issues : []),
+        ...(Array.isArray(audit?.issues) ? audit.issues.map(issueToSearchText) : []),
         ...(Array.isArray(audit?.recommendations) ? audit.recommendations : []),
         endpointText,
       ]
@@ -166,15 +181,7 @@ function HistoryList({
               <button onClick={() => setSelectedAudit(a)}>Ver detalle</button>
 
               <h4>Problemas</h4>
-              {issues.length > 0 ? (
-                <ul>
-                  {issues.map((x, i) => (
-                    <li key={i}>{translate(x)}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ opacity: 0.6 }}>Sin problemas detectados</p>
-              )}
+              <IssueList issues={issues} translate={translate} />
 
               <h4>Recomendaciones</h4>
               {recommendations.length > 0 ? (

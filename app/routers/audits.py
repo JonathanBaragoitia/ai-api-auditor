@@ -2,6 +2,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -123,8 +124,8 @@ def create_manual_audit(
         response_example=json.dumps(data.response_example) if data.response_example else None,
         score=analysis.score,
         risk_level=analysis.risk_level,
-        issues=json.dumps(analysis.issues),
-        recommendations=json.dumps(analysis.recommendations),
+        issues=json.dumps(jsonable_encoder(analysis.issues)),
+        recommendations=json.dumps(jsonable_encoder(analysis.recommendations)),
         summary=analysis.summary,
         technical_observation=analysis.technical_observation,
         security_observation=analysis.security_observation,

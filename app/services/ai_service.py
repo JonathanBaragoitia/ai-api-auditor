@@ -12,6 +12,17 @@ OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
+ALLOWED_CATEGORIES = {
+    "security",
+    "validation",
+    "documentation",
+    "performance",
+    "rest_design",
+    "maintainability",
+    "observability",
+}
+
 
 DEFAULT_SUMMARY = "Análisis generado con criterios técnicos generales de diseño, seguridad y mantenibilidad."
 DEFAULT_TECHNICAL_OBSERVATION = (
@@ -41,7 +52,7 @@ def fallback_analysis(issue: str, recommendation: str) -> dict:
     return {
         "score": 5,
         "risk_level": "medium",
-        "issues": [issue],
+        "issues": [build_structured_issue(issue, "medium", "maintainability", issue, recommendation)],
         "recommendations": [recommendation],
         "summary": DEFAULT_SUMMARY,
         "technical_observation": DEFAULT_TECHNICAL_OBSERVATION,
@@ -84,7 +95,7 @@ def normalize_risk(score: float, issues: list[str]) -> str:
     Ajusta el riesgo de forma más realista.
     Si hay problemas graves de seguridad, no permitimos riesgo bajo.
     """
-    issues_text = " ".join(issues).lower()
+    issues_text = " ".join(issue_to_text(issue) for issue in issues).lower()
 
     security_keywords = [
         "authentication",
@@ -123,6 +134,85 @@ def normalize_text(value: object, default: str) -> str:
     return default
 
 
+def build_structured_issue(
+    title: object,
+    severity: object = "medium",
+    category: object = "maintainability",
+    evidence: object | None = None,
+    recommendation: object | None = None,
+) -> dict[str, str]:
+    normalized_title = normalize_text(title, "Problema detectado")
+    normalized_severity = str(severity or "medium").lower()
+    normalized_category = str(category or "maintainability").lower()
+
+    if normalized_severity not in ALLOWED_SEVERITIES:
+        normalized_severity = "medium"
+
+    if normalized_category not in ALLOWED_CATEGORIES:
+        normalized_category = "maintainability"
+
+    return {
+        "title": normalized_title,
+        "severity": normalized_severity,
+        "category": normalized_category,
+        "evidence": normalize_text(evidence, normalized_title),
+        "recommendation": normalize_text(recommendation, "Revisar y corregir este hallazgo técnico."),
+    }
+
+
+def normalize_issue(
+    issue: object,
+    default_recommendation: str = "Revisar manualmente este hallazgo.",
+) -> dict[str, str]:
+    if isinstance(issue, dict):
+        return build_structured_issue(
+            issue.get("title"),
+            issue.get("severity"),
+            issue.get("category"),
+            issue.get("evidence"),
+            issue.get("recommendation") or default_recommendation,
+        )
+
+    return build_structured_issue(
+        issue,
+        "medium",
+        "maintainability",
+        issue,
+        default_recommendation,
+    )
+
+
+def normalize_issues(issues: object, recommendations: list[object]) -> list[dict[str, str]]:
+    raw_issues = issues if isinstance(issues, list) else [issues]
+    default_recommendation = next(
+        (
+            recommendation
+            for recommendation in recommendations
+            if isinstance(recommendation, str) and recommendation.strip()
+        ),
+        "Revisar manualmente este hallazgo.",
+    )
+
+    return [normalize_issue(issue, default_recommendation) for issue in raw_issues if issue]
+
+
+def normalize_recommendations(recommendations: object) -> list[object]:
+    if isinstance(recommendations, list):
+        return recommendations
+
+    if recommendations:
+        return [str(recommendations)]
+
+    return []
+
+
+def issue_to_text(issue: object) -> str:
+    if isinstance(issue, dict):
+        return " ".join(str(value) for value in issue.values() if value)
+
+    return str(issue)
+
+
 def analyze_with_ollama(prompt: str) -> dict:
     system_prompt = f"""
     Eres un auditor senior de seguridad y arquitectura de APIs backend.
@@ -159,7 +249,16 @@ def analyze_with_ollama(prompt: str) -> dict:
     {{
       "score": number,
       "risk_level": "low" | "medium" | "high",
-      "issues": ["problema detectado en español"],
+      "issues": [
+        {{
+          "title": "título breve del problema en español",
+          "severity": "low" | "medium" | "high" | "critical",
+          "category": "security" | "validation" | "documentation" | "performance" | "rest_design" |
+            "maintainability" | "observability",
+          "evidence": "evidencia concreta observada en el endpoint en español",
+          "recommendation": "acción recomendada para corregir el problema en español"
+        }}
+      ],
       "recommendations": ["recomendación accionable en español"],
       "summary": "resumen profesional breve del resultado de la auditoría en español",
       "technical_observation": "observación técnica clara sobre diseño y contrato de API en español",
@@ -224,14 +323,8 @@ def analyze_with_ollama(prompt: str) -> dict:
         logger.warning("Ollama returned an invalid score: %r", analysis.get("score"))
         score = 5
 
-    issues = analysis.get("issues", [])
-    recommendations = analysis.get("recommendations", [])
-
-    if not isinstance(issues, list):
-        issues = [str(issues)]
-
-    if not isinstance(recommendations, list):
-        recommendations = [str(recommendations)]
+    recommendations = normalize_recommendations(analysis.get("recommendations", []))
+    issues = normalize_issues(analysis.get("issues", []), recommendations)
 
     risk_level = normalize_risk(score, issues)
 

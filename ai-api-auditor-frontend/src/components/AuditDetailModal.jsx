@@ -1,4 +1,5 @@
 import AIObservationCards from "./AIObservationCards";
+import IssueList from "./IssueList";
 
 function AuditDetailModal({
   audit,
@@ -44,15 +45,7 @@ function AuditDetailModal({
       )}
 
       <h4>Problemas</h4>
-      {issues.length > 0 ? (
-        <ul>
-          {issues.map((x, i) => (
-            <li key={i}>{translate(x)}</li>
-          ))}
-        </ul>
-      ) : (
-        <p style={{ opacity: 0.6 }}>Sin problemas detectados</p>
-      )}
+      <IssueList issues={issues} translate={translate} />
 
       <h4>Recomendaciones</h4>
       {recommendations.length > 0 ? (
@@ -88,15 +81,7 @@ function AuditDetailModal({
                 <AIObservationCards item={endpoint} translate={translate} compact />
 
                 <h4>Problemas</h4>
-                {endpointIssues.length > 0 ? (
-                  <ul>
-                    {endpointIssues.map((x, i) => (
-                      <li key={i}>{translate(x)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p style={{ opacity: 0.6 }}>Sin problemas detectados</p>
-                )}
+                <IssueList issues={endpointIssues} translate={translate} />
 
                 <h4>Recomendaciones</h4>
                 {endpointRecommendations.length > 0 ? (

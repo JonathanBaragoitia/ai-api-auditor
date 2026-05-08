@@ -1,4 +1,5 @@
 import AIObservationCards from "./AIObservationCards";
+import IssueList from "./IssueList";
 
 function ResultsPanel({
   result,
@@ -36,15 +37,7 @@ function ResultsPanel({
               <AIObservationCards item={ep} translate={translate} />
 
               <h4>Problemas</h4>
-              {issues.length > 0 ? (
-                <ul>
-                  {issues.map((x, j) => (
-                    <li key={j}>{translate(x)}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ opacity: 0.6 }}>Sin problemas detectados</p>
-              )}
+              <IssueList issues={issues} translate={translate} />
 
               <h4>Recomendaciones</h4>
               {recommendations.length > 0 ? (
