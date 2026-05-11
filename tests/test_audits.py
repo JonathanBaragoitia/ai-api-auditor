@@ -9,6 +9,7 @@ from app.dependencies.rate_limit import clear_rate_limits
 from app.main import app
 from app.models.audit import Audit
 from app.schemas.audit import OpenAPIEndpointAnalysis
+from app.services.ai_service import OllamaAnalysisError
 
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
@@ -92,6 +93,7 @@ def test_create_manual_audit_success():
     assert data["method"] == "GET"
     assert data["path"] == "/users"
     assert "score" in data
+    assert data["status"] == "completed"
 
 
 def test_manual_audit_returns_structured_issue():
@@ -368,6 +370,8 @@ def test_openapi_audit_failed_status_is_stored_in_history():
     failed_audit = list_response.json()[0]
 
     assert create_response.status_code == 400
+    assert create_response.json()["detail"]["error"]["code"] == "OPENAPI_INVALID"
+    assert create_response.json()["detail"]["error"]["status"] == "failed"
     assert failed_audit["name"] == payload["name"]
     assert failed_audit["status"] == "failed"
     assert "paths" in failed_audit["error_message"]
@@ -386,7 +390,8 @@ def test_openapi_audit_rejects_schema_without_paths():
         response = client.post("/audits/openapi", json=payload, headers=headers)
 
     assert response.status_code == 400
-    assert "paths" in response.json()["detail"]
+    assert response.json()["detail"]["error"]["code"] == "OPENAPI_INVALID"
+    assert "paths" in response.json()["detail"]["error"]["message"]
 
 
 def test_openapi_audit_rejects_empty_paths():
@@ -402,7 +407,7 @@ def test_openapi_audit_rejects_empty_paths():
         response = client.post("/audits/openapi", json=payload, headers=headers)
 
     assert response.status_code == 400
-    assert "al menos un endpoint válido" in response.json()["detail"]
+    assert "al menos un endpoint válido" in response.json()["detail"]["error"]["message"]
 
 
 def test_openapi_audit_rejects_too_large_schema(monkeypatch):
@@ -423,7 +428,7 @@ def test_openapi_audit_rejects_too_large_schema(monkeypatch):
         response = client.post("/audits/openapi", json=payload, headers=headers)
 
     assert response.status_code == 413
-    assert "tamaño máximo" in response.json()["detail"]
+    assert "tamaño máximo" in response.json()["detail"]["error"]["message"]
 
 
 def test_openapi_audit_rejects_too_many_endpoints(monkeypatch):
@@ -447,7 +452,39 @@ def test_openapi_audit_rejects_too_many_endpoints(monkeypatch):
         response = client.post("/audits/openapi", json=payload, headers=headers)
 
     assert response.status_code == 400
-    assert "número máximo de endpoints" in response.json()["detail"]
+    assert "número máximo de endpoints" in response.json()["detail"]["error"]["message"]
+
+
+def test_openapi_audit_stores_failed_status_when_ai_fails(monkeypatch):
+    def fake_analyze_with_ollama(_prompt):
+        raise OllamaAnalysisError("No se pudo conectar con Ollama: connection refused")
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.services.openapi_service.analyze_with_ollama", fake_analyze_with_ollama)
+
+    payload = {
+        "name": "OpenAPI con Ollama caído",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/openapi", json=payload, headers=headers)
+        list_response = client.get("/audits/", headers=headers)
+
+    error = create_response.json()["detail"]["error"]
+    failed_audit = list_response.json()[0]
+
+    assert create_response.status_code == 502
+    assert error["code"] == "AI_ANALYSIS_FAILED"
+    assert error["status"] == "failed"
+    assert "Ollama" in error["message"]
+    assert failed_audit["status"] == "failed"
+    assert failed_audit["error_message"] == error["message"]
 
 
 def test_openapi_audit_uses_safe_fallback_when_ai_response_is_invalid(monkeypatch):

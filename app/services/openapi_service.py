@@ -9,6 +9,7 @@ from app.services.ai_service import (
     DEFAULT_SUMMARY,
     DEFAULT_TECHNICAL_OBSERVATION,
     SPANISH_OUTPUT_INSTRUCTIONS,
+    OllamaAnalysisError,
     analyze_with_ollama,
     build_structured_issue,
     normalize_issues,
@@ -186,6 +187,8 @@ def analyze_openapi_schema(openapi_schema: dict, endpoints: list[dict] | None = 
                     ),
                 )
             )
+        except OllamaAnalysisError:
+            raise
         except Exception as exc:
             logger.exception("OpenAPI endpoint analysis failed for %s %s", endpoint["method"], endpoint["path"])
             results.append(

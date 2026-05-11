@@ -309,8 +309,8 @@ const statusGroupStyle = {
 };
 
 const errorStyle = {
-  background: "#7f1d1d",
-  border: "1px solid #b91c1c",
+  background: "rgba(127, 29, 29, 0.22)",
+  border: "1px solid rgba(248, 113, 113, 0.45)",
   borderRadius: 10,
   color: "#fecaca",
   padding: 10,

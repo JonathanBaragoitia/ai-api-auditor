@@ -40,6 +40,7 @@ function AuditDetailModal({
 
         <div style={scorePanelStyle}>
           <span style={scoreStyle}>{score}</span>
+          <Badge type="status" value={audit?.status} />
           <Badge type="risk" value={riskLevel} />
         </div>
       </div>
@@ -68,6 +69,12 @@ function AuditDetailModal({
 
       {activeTab === "Resumen" && (
         <div style={tabPanelStyle}>
+          {audit?.error_message && (
+            <div style={errorCardStyle} role="alert">
+              <strong>Auditoría fallida</strong>
+              <p>{translate(audit.error_message)}</p>
+            </div>
+          )}
           <div style={metaGridStyle}>
             <Metric label="Auditoría" value={translate(audit?.name)} />
             <Metric label="Tipo" value={auditType} />
@@ -215,6 +222,14 @@ const titleStyle = {
 const mutedTextStyle = {
   color: "#94a3b8",
   margin: 0,
+};
+
+const errorCardStyle = {
+  background: "rgba(127, 29, 29, 0.22)",
+  border: "1px solid rgba(248, 113, 113, 0.45)",
+  borderRadius: 14,
+  color: "#fecaca",
+  padding: 16,
 };
 
 const scorePanelStyle = {

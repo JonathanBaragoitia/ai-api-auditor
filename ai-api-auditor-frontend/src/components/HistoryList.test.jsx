@@ -42,4 +42,29 @@ describe("HistoryList", () => {
     expect(screen.getByText("Puntuación mínima: 0")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver detalle" })).toBeInTheDocument();
   });
+
+  it("muestra auditorías completadas con badge de estado", () => {
+    render(
+      <HistoryList
+        history={[
+          {
+            id: 2,
+            name: "Auditoría completada",
+            path: "/users",
+            method: "OPENAPI",
+            score: 9,
+            risk_level: "low",
+            issues: [],
+            recommendations: [],
+            status: "completed",
+            created_at: "2026-05-07T00:00:00",
+          },
+        ]}
+        {...helpers}
+      />,
+    );
+
+    expect(screen.getByText("Auditoría completada")).toBeInTheDocument();
+    expect(screen.getByText("Completada")).toBeInTheDocument();
+  });
 });

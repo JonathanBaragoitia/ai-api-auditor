@@ -57,10 +57,13 @@ export function normalizeStatus(value) {
   return {
     pendiente: "pending",
     pending: "pending",
-    "en ejecución": "running",
-    ejecucion: "running",
-    ejecución: "running",
-    running: "running",
+    procesando: "processing",
+    procesamiento: "processing",
+    processing: "processing",
+    "en ejecución": "processing",
+    ejecucion: "processing",
+    ejecución: "processing",
+    running: "processing",
     completada: "completed",
     completado: "completed",
     completed: "completed",
@@ -103,7 +106,7 @@ export function getCategoryLabel(category) {
 export function getStatusLabel(status) {
   return {
     pending: "Pendiente",
-    running: "En ejecución",
+    processing: "Procesando",
     completed: "Completada",
     failed: "Fallida",
   }[normalizeStatus(status)] || "Completada";

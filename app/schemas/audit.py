@@ -4,7 +4,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-AuditStatus = Literal["pending", "running", "completed", "failed"]
+AuditStatus = Literal["pending", "processing", "completed", "failed"]
 
 
 class StructuredIssue(BaseModel):

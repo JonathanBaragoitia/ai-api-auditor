@@ -12,6 +12,11 @@ OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
 
 logger = logging.getLogger(__name__)
 
+
+class OllamaAnalysisError(RuntimeError):
+    pass
+
+
 ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
 ALLOWED_CATEGORIES = {
     "security",
@@ -295,10 +300,7 @@ def analyze_with_ollama(prompt: str) -> dict:
         response.raise_for_status()
     except requests.RequestException as exc:
         logger.warning("Ollama request failed: %s", exc, exc_info=True)
-        return fallback_analysis(
-            "No se pudo conectar con Ollama.",
-            "Comprueba que Ollama está encendido y que el modelo está descargado.",
-        )
+        raise OllamaAnalysisError(f"No se pudo conectar con Ollama: {exc}") from exc
 
     try:
         response_data = response.json()
@@ -310,10 +312,7 @@ def analyze_with_ollama(prompt: str) -> dict:
         )
     except ValueError as exc:
         logger.warning("Ollama returned a non-JSON HTTP response: %s", exc, exc_info=True)
-        return fallback_analysis(
-            "Ollama devolvió una respuesta HTTP no válida.",
-            "Revisar que Ollama y el modelo configurado estén funcionando correctamente.",
-        )
+        raise OllamaAnalysisError("Ollama devolvió una respuesta HTTP no válida.") from exc
 
     analysis = extract_json_from_text(raw_text)
 

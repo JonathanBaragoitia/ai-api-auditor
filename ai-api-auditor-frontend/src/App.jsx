@@ -83,7 +83,9 @@ function App() {
     auditLoading,
     auditError,
     auditSuccess,
+    analysisTimeMs,
     analyzeOpenAPI,
+    retryLastAudit,
     exportResult,
     exportPdfReport,
     clearAuditState,
@@ -119,6 +121,9 @@ function App() {
               loading={auditLoading}
               error={auditError}
               success={auditSuccess}
+              analysisTimeMs={analysisTimeMs}
+              onRetry={retryLastAudit}
+              canRetry={Boolean(input)}
               textareaStyle={textarea}
               buttonStyle={button}
             />

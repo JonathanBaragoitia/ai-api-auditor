@@ -11,12 +11,16 @@ export function useAudits(token, onLogout) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [lastInput, setLastInput] = useState("");
+  const [analysisTimeMs, setAnalysisTimeMs] = useState(null);
 
   const clearAuditState = useCallback(() => {
     setResult(null);
     setHistory([]);
     setError(null);
     setSuccess(null);
+    setLastInput("");
+    setAnalysisTimeMs(null);
   }, []);
 
   const loadHistory = useCallback(async () => {
@@ -41,10 +45,13 @@ export function useAudits(token, onLogout) {
   }, [loadHistory]);
 
   const analyzeOpenAPI = async (input) => {
+    const startedAt = performance.now();
     setLoading(true);
     setError(null);
     setSuccess(null);
     setResult(null);
+    setLastInput(input);
+    setAnalysisTimeMs(null);
 
     try {
       const parsed = JSON.parse(input);
@@ -62,14 +69,38 @@ export function useAudits(token, onLogout) {
         onLogout,
       );
 
-      setResult(data);
+      const elapsedMs = Math.round(performance.now() - startedAt);
+      setAnalysisTimeMs(elapsedMs);
+      setResult({ ...data, analysis_time_ms: elapsedMs });
       setSuccess("Análisis completado correctamente");
       loadHistory();
     } catch (err) {
       console.error(err);
-      setError("Error al analizar la API");
+      const message = err.message || "Error al analizar la API";
+      const backendError = err.details?.detail?.error;
+      const elapsedMs = Math.round(performance.now() - startedAt);
+      setAnalysisTimeMs(elapsedMs);
+      setError(message);
+      setResult({
+        id: backendError?.audit_id,
+        name: "Frontend Audit",
+        status: backendError?.status || "failed",
+        error_message: message,
+        total_endpoints: 0,
+        average_score: 0,
+        global_risk_level: "high",
+        endpoints: [],
+        analysis_time_ms: elapsedMs,
+      });
+      loadHistory();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const retryLastAudit = () => {
+    if (lastInput && !loading) {
+      analyzeOpenAPI(lastInput);
     }
   };
 
@@ -105,7 +136,9 @@ export function useAudits(token, onLogout) {
     auditLoading: loading,
     auditError: error,
     auditSuccess: success,
+    analysisTimeMs,
     analyzeOpenAPI,
+    retryLastAudit,
     exportResult,
     exportPdfReport,
     clearAuditState,

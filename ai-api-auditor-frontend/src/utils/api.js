@@ -33,8 +33,11 @@ export async function apiFetch(url, options = {}, token, onLogout) {
   }
 
   if (!response.ok) {
-    const backendMessage = data?.detail || data?.message;
-    throw new Error(backendMessage || "Error en la petición");
+    const backendMessage = data?.detail?.error?.message || (typeof data?.detail === "string" ? data.detail : null) || data?.message;
+    const error = new Error(backendMessage || "Error en la petición");
+    error.details = data;
+    error.status = response.status;
+    throw error;
   }
 
   return data;
