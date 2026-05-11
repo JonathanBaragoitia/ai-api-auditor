@@ -27,6 +27,15 @@ ALLOWED_CATEGORIES = {
     "maintainability",
     "observability",
 }
+MAX_ISSUES = 6
+MAX_RECOMMENDATIONS = 6
+TEXT_LIMITS = {
+    "summary": 180,
+    "observation": 240,
+    "issue_title": 90,
+    "issue_evidence": 180,
+    "recommendation": 150,
+}
 
 
 DEFAULT_SUMMARY = "Análisis generado con criterios técnicos generales de diseño, seguridad y mantenibilidad."
@@ -64,6 +73,77 @@ def fallback_analysis(issue: str, recommendation: str) -> dict:
         "security_observation": DEFAULT_SECURITY_OBSERVATION,
         "maintainability_observation": DEFAULT_MAINTAINABILITY_OBSERVATION,
     }
+
+
+def normalize_plain_text(value: object) -> str:
+    # Limpia saltos y espacios repetidos para que el frontend/exportaciones reciban texto compacto.
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def trim_text(value: object, max_chars: int) -> str:
+    # Limita longitud sin cortar agresivamente si hay una frase completa cerca del límite.
+    text = normalize_plain_text(value)
+    if len(text) <= max_chars:
+        return text
+
+    cutoff = text[:max_chars].rsplit(". ", 1)[0]
+    if len(cutoff) >= max_chars * 0.55:
+        return cutoff.rstrip(" .") + "."
+
+    return text[: max_chars - 1].rstrip(" ,.;") + "…"
+
+
+def text_fingerprint(value: object) -> set[str]:
+    # Reduce el texto a tokens significativos para comparar similitud sin depender de igualdad exacta.
+    words = re.findall(r"[a-záéíóúñü0-9]{4,}", normalize_plain_text(value).lower())
+    stopwords = {
+        "para",
+        "como",
+        "este",
+        "esta",
+        "debe",
+        "deben",
+        "endpoint",
+        "endpoints",
+        "auditoría",
+        "revisar",
+        "mejorar",
+        "implementar",
+    }
+    return {word for word in words if word not in stopwords}
+
+
+def are_texts_similar(first: object, second: object, threshold: float = 0.7) -> bool:
+    first_text = normalize_plain_text(first).lower()
+    second_text = normalize_plain_text(second).lower()
+
+    if not first_text or not second_text:
+        return False
+
+    if first_text == second_text or first_text in second_text or second_text in first_text:
+        return True
+
+    first_tokens = text_fingerprint(first_text)
+    second_tokens = text_fingerprint(second_text)
+    if not first_tokens or not second_tokens:
+        return False
+
+    overlap = len(first_tokens & second_tokens) / len(first_tokens | second_tokens)
+    return overlap >= threshold
+
+
+def is_redundant_text(value: object, previous_values: list[object]) -> bool:
+    # Evita que resumen, observaciones, issues y recomendaciones repitan la misma idea con otras palabras.
+    return any(are_texts_similar(value, previous) for previous in previous_values if previous)
+
+
+def compact_distinct_text(value: object, default: str, previous_values: list[object], max_chars: int) -> str:
+    text = trim_text(normalize_text(value, default), max_chars)
+    if not is_redundant_text(text, previous_values):
+        return text
+
+    fallback = trim_text(default, max_chars)
+    return "" if is_redundant_text(fallback, previous_values) else fallback
 
 
 def extract_json_from_text(text: str) -> dict:
@@ -146,7 +226,7 @@ def build_structured_issue(
     evidence: object | None = None,
     recommendation: object | None = None,
 ) -> dict[str, str]:
-    normalized_title = normalize_text(title, "Problema detectado")
+    normalized_title = trim_text(normalize_text(title, "Problema detectado"), TEXT_LIMITS["issue_title"])
     normalized_severity = str(severity or "medium").lower()
     normalized_category = str(category or "maintainability").lower()
 
@@ -160,8 +240,11 @@ def build_structured_issue(
         "title": normalized_title,
         "severity": normalized_severity,
         "category": normalized_category,
-        "evidence": normalize_text(evidence, normalized_title),
-        "recommendation": normalize_text(recommendation, "Revisar y corregir este hallazgo técnico."),
+        "evidence": trim_text(normalize_text(evidence, normalized_title), TEXT_LIMITS["issue_evidence"]),
+        "recommendation": trim_text(
+            normalize_text(recommendation, "Corregir este hallazgo técnico."),
+            TEXT_LIMITS["recommendation"],
+        ),
     }
 
 
@@ -198,17 +281,56 @@ def normalize_issues(issues: object, recommendations: list[object]) -> list[dict
         "Revisar manualmente este hallazgo.",
     )
 
-    return [normalize_issue(issue, default_recommendation) for issue in raw_issues if issue]
+    normalized = []
+    seen = []
+
+    for issue in raw_issues:
+        if not issue or len(normalized) >= MAX_ISSUES:
+            continue
+
+        normalized_issue = normalize_issue(issue, default_recommendation)
+        signature = " ".join(
+            [normalized_issue["title"], normalized_issue["evidence"], normalized_issue["recommendation"]]
+        )
+        if is_redundant_text(signature, seen):
+            continue
+
+        seen.append(signature)
+        normalized.append(normalized_issue)
+
+    return normalized
 
 
 def normalize_recommendations(recommendations: object) -> list[object]:
     if isinstance(recommendations, list):
-        return recommendations
+        raw_recommendations = recommendations
+    elif recommendations:
+        raw_recommendations = [recommendations]
+    else:
+        raw_recommendations = []
 
-    if recommendations:
-        return [str(recommendations)]
+    normalized = []
+    for recommendation in raw_recommendations:
+        text = recommendation_to_text(recommendation)
+        text = trim_text(text, TEXT_LIMITS["recommendation"])
+        if text and not is_redundant_text(text, normalized):
+            normalized.append(text)
+        if len(normalized) >= MAX_RECOMMENDATIONS:
+            break
 
-    return []
+    return normalized
+
+
+def recommendation_to_text(value: object) -> str:
+    if isinstance(value, str):
+        return value
+
+    if isinstance(value, dict):
+        return normalize_plain_text(
+            value.get("recommendation") or value.get("title") or value.get("description") or ""
+        )
+
+    return normalize_plain_text(value)
 
 
 def issue_to_text(issue: object) -> str:
@@ -218,13 +340,69 @@ def issue_to_text(issue: object) -> str:
     return str(issue)
 
 
+def issue_recommendations(issues: list[dict[str, str]]) -> list[str]:
+    return [issue.get("recommendation", "") for issue in issues if isinstance(issue, dict)]
+
+
+def refine_recommendations(recommendations: list[object], issues: list[dict[str, str]]) -> list[str]:
+    # Las recomendaciones globales no deben duplicar la recomendación específica de cada issue.
+    issue_texts = [issue_to_text(issue) for issue in issues] + issue_recommendations(issues)
+    refined = []
+
+    for recommendation in recommendations:
+        text = trim_text(recommendation_to_text(recommendation), TEXT_LIMITS["recommendation"])
+        if text and not is_redundant_text(text, issue_texts + refined):
+            refined.append(text)
+
+    return refined[:MAX_RECOMMENDATIONS]
+
+
+def build_distinct_narrative_fields(analysis: dict, issues: list[dict[str, str]], recommendations: list[str]) -> dict:
+    # Orden editorial: el resumen abre la lectura; cada observación se compara con lo anterior
+    # para que no repita problemas ni recomendaciones ya listadas.
+    issue_context = [issue_to_text(issue) for issue in issues]
+    recommendation_context = list(recommendations)
+
+    summary = compact_distinct_text(
+        analysis.get("summary"),
+        DEFAULT_SUMMARY,
+        [],
+        TEXT_LIMITS["summary"],
+    )
+    technical = compact_distinct_text(
+        analysis.get("technical_observation"),
+        DEFAULT_TECHNICAL_OBSERVATION,
+        [summary] + issue_context + recommendation_context,
+        TEXT_LIMITS["observation"],
+    )
+    security = compact_distinct_text(
+        analysis.get("security_observation"),
+        DEFAULT_SECURITY_OBSERVATION,
+        [summary, technical] + issue_context + recommendation_context,
+        TEXT_LIMITS["observation"],
+    )
+    maintainability = compact_distinct_text(
+        analysis.get("maintainability_observation"),
+        DEFAULT_MAINTAINABILITY_OBSERVATION,
+        [summary, technical, security] + issue_context + recommendation_context,
+        TEXT_LIMITS["observation"],
+    )
+
+    return {
+        "summary": summary,
+        "technical_observation": technical,
+        "security_observation": security,
+        "maintainability_observation": maintainability,
+    }
+
+
 def analyze_with_ollama(prompt: str) -> dict:
     system_prompt = f"""
     Eres un auditor senior de seguridad y arquitectura de APIs backend.
 
     Analiza el endpoint de API y devuelve SOLO JSON válido.
 
-    Debes proporcionar una auditoría técnica clara, profesional y concisa.
+    Debes proporcionar una auditoría técnica clara, profesional y concisa, sin tono genérico.
 
     {SPANISH_OUTPUT_INSTRUCTIONS}
 
@@ -246,8 +424,24 @@ def analyze_with_ollama(prompt: str) -> dict:
     - La documentación deficiente debe reducir la puntuación.
     - Los problemas de seguridad normalmente deben producir riesgo medio o alto.
 
-    Los campos narrativos deben sonar como escritos por un arquitecto senior de APIs.
-    Mantén cada campo narrativo breve y útil para un interlocutor técnico.
+    Organización editorial obligatoria:
+    - summary: máximo 2 frases, ejecutivo, sin repetir problemas ni recomendaciones textuales.
+    - technical_observation: solo diseño de contrato, métodos, parámetros, responses y consistencia técnica.
+    - security_observation: solo autenticación, autorización, exposición de datos, rate limiting y errores sensibles.
+    - maintainability_observation: solo documentación, evolución, observabilidad, escalabilidad y mantenibilidad.
+    - issues: hallazgos concretos y verificables; evita títulos genéricos.
+    - recommendations: frases cortas, directas y accionables; no repitas recomendaciones ya incluidas en issues.
+
+    Reglas anti-repetición:
+    - No uses la misma frase en dos campos.
+    - No repitas el summary en las observaciones.
+    - No conviertas un issue y una recomendación global en el mismo texto.
+    - Si no hay evidencia para una sección, escribe una observación breve y específica, no relleno.
+
+    Límites de longitud:
+    - summary: hasta 180 caracteres.
+    - cada observación: hasta 240 caracteres.
+    - cada title/evidence/recommendation: una frase breve.
 
     Devuelve exactamente esta estructura JSON:
 
@@ -265,10 +459,10 @@ def analyze_with_ollama(prompt: str) -> dict:
         }}
       ],
       "recommendations": ["recomendación accionable en español"],
-      "summary": "resumen profesional breve del resultado de la auditoría en español",
-      "technical_observation": "observación técnica clara sobre diseño y contrato de API en español",
-      "security_observation": "observación de seguridad clara sobre controles en español",
-      "maintainability_observation": "observación sobre documentación, consistencia y evolución en español"
+      "summary": "resumen ejecutivo breve y no repetitivo en español",
+      "technical_observation": "observación solo técnica sobre contrato, métodos, responses o consistencia",
+      "security_observation": "observación solo de seguridad sobre controles, exposición o errores sensibles",
+      "maintainability_observation": "observación solo sobre documentación, evolución, observabilidad o escalabilidad"
     }}
 
     No incluyas markdown.
@@ -324,6 +518,8 @@ def analyze_with_ollama(prompt: str) -> dict:
 
     recommendations = normalize_recommendations(analysis.get("recommendations", []))
     issues = normalize_issues(analysis.get("issues", []), recommendations)
+    recommendations = refine_recommendations(recommendations, issues)
+    narrative_fields = build_distinct_narrative_fields(analysis, issues, recommendations)
 
     risk_level = normalize_risk(score, issues)
 
@@ -332,17 +528,5 @@ def analyze_with_ollama(prompt: str) -> dict:
         "risk_level": risk_level,
         "issues": issues,
         "recommendations": recommendations,
-        "summary": normalize_text(analysis.get("summary"), DEFAULT_SUMMARY),
-        "technical_observation": normalize_text(
-            analysis.get("technical_observation"),
-            DEFAULT_TECHNICAL_OBSERVATION,
-        ),
-        "security_observation": normalize_text(
-            analysis.get("security_observation"),
-            DEFAULT_SECURITY_OBSERVATION,
-        ),
-        "maintainability_observation": normalize_text(
-            analysis.get("maintainability_observation"),
-            DEFAULT_MAINTAINABILITY_OBSERVATION,
-        ),
+        **narrative_fields,
     }
