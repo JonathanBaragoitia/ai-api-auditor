@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 AuditStatus = Literal["pending", "processing", "completed", "failed"]
@@ -57,6 +57,8 @@ class OpenAPIEndpointAnalysis(BaseModel):
 
 
 class AuditResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     method: str
@@ -81,9 +83,6 @@ class AuditResponse(BaseModel):
     status: AuditStatus = "completed"
     error_message: str | None = None
     audit_mode: AuditMode = "enterprise"
-
-    class Config:
-        from_attributes = True
 
 
 class OpenAPIAuditResponse(BaseModel):

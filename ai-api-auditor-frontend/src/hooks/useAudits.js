@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../utils/api";
-import { openPrintableAuditReport } from "../utils/report";
+import { downloadAuditExport, openPrintableAuditReport } from "../utils/report";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -109,23 +109,15 @@ export function useAudits(token, onLogout) {
     }
   };
 
-  const exportResult = () => {
+  const exportAudit = (format) => {
     if (!result) {
       return;
     }
 
-    const jsonContent = JSON.stringify(result, null, 2);
-    const blob = new Blob([jsonContent], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "auditoria-api.json";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadAuditExport(result, format);
   };
+
+  const exportResult = () => exportAudit("json");
 
   const exportPdfReport = () => {
     if (!result) {
@@ -144,6 +136,7 @@ export function useAudits(token, onLogout) {
     analysisTimeMs,
     analyzeOpenAPI,
     retryLastAudit,
+    exportAudit,
     exportResult,
     exportPdfReport,
     clearAuditState,

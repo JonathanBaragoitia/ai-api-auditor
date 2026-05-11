@@ -1,11 +1,114 @@
-import { getCategoryLabel, getRiskLabel, getSeverityLabel, normalizeDisplayScore } from "./display";
+import { getAuditModeLabel, getCategoryLabel, getRiskLabel, getSeverityLabel, normalizeDisplayScore } from "./display";
+
+export function buildAuditExport(audit, format) {
+  if (format === "json") {
+    return {
+      content: JSON.stringify(audit, null, 2),
+      filename: "auditoria-api.json",
+      type: "application/json",
+    };
+  }
+
+  if (format === "markdown") {
+    return {
+      content: buildAuditReportMarkdown(audit),
+      filename: "auditoria-api.md",
+      type: "text/markdown;charset=utf-8",
+    };
+  }
+
+  return {
+    content: buildAuditReportText(audit),
+    filename: "auditoria-api.txt",
+    type: "text/plain;charset=utf-8",
+  };
+}
+
+export function downloadAuditExport(audit, format) {
+  const exportFile = buildAuditExport(audit, format);
+  const blob = new Blob([exportFile.content], { type: exportFile.type });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = exportFile.filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function buildAuditReportMarkdown(audit) {
+  const data = getReportData(audit);
+
+  return [
+    `# Informe de auditoría API: ${data.name}`,
+    "",
+    `- **Fecha de auditoría:** ${data.auditDate}`,
+    `- **Modo de auditoría:** ${data.auditMode}`,
+    `- **Score global:** ${data.score}/100`,
+    `- **Riesgo global:** ${data.risk}`,
+    `- **Estado:** ${data.status}`,
+    `- **Endpoints analizados:** ${data.endpointCount}`,
+    "",
+    "## Observaciones IA",
+    data.summary,
+    "",
+    `**Técnica:** ${data.technicalObservation}`,
+    "",
+    `**Seguridad:** ${data.securityObservation}`,
+    "",
+    `**Mantenibilidad:** ${data.maintainabilityObservation}`,
+    "",
+    "## Endpoints",
+    data.endpoints.length > 0
+      ? data.endpoints.map((endpoint) => `- **${endpoint.method || "-"} ${endpoint.path || "-"}** - Score ${normalizeDisplayScore(endpoint.score)}/100 - Riesgo ${getRiskLabel(endpoint.risk_level)}${endpoint.summary ? ` - ${endpoint.summary}` : ""}`).join("\n")
+      : "No hay endpoints analizados.",
+    "",
+    "## Problemas detectados",
+    data.issues.length > 0 ? data.issues.map(formatIssueMarkdown).join("\n") : "Sin problemas detectados.",
+    "",
+    "## Recomendaciones",
+    data.recommendations.length > 0 ? data.recommendations.map((item) => `- ${item}`).join("\n") : "Sin recomendaciones.",
+    "",
+  ].join("\n");
+}
+
+export function buildAuditReportText(audit) {
+  const data = getReportData(audit);
+
+  return [
+    `INFORME DE AUDITORIA API: ${data.name}`,
+    "",
+    `Fecha de auditoria: ${data.auditDate}`,
+    `Modo de auditoria: ${data.auditMode}`,
+    `Score global: ${data.score}/100`,
+    `Riesgo global: ${data.risk}`,
+    `Estado: ${data.status}`,
+    `Endpoints analizados: ${data.endpointCount}`,
+    "",
+    "OBSERVACIONES IA",
+    data.summary,
+    `Tecnica: ${data.technicalObservation}`,
+    `Seguridad: ${data.securityObservation}`,
+    `Mantenibilidad: ${data.maintainabilityObservation}`,
+    "",
+    "ENDPOINTS",
+    data.endpoints.length > 0
+      ? data.endpoints.map((endpoint) => `- ${endpoint.method || "-"} ${endpoint.path || "-"} | Score ${normalizeDisplayScore(endpoint.score)}/100 | Riesgo ${getRiskLabel(endpoint.risk_level)}${endpoint.summary ? ` | ${endpoint.summary}` : ""}`).join("\n")
+      : "No hay endpoints analizados.",
+    "",
+    "PROBLEMAS DETECTADOS",
+    data.issues.length > 0 ? data.issues.map(formatIssueText).join("\n") : "Sin problemas detectados.",
+    "",
+    "RECOMENDACIONES",
+    data.recommendations.length > 0 ? data.recommendations.map((item) => `- ${item}`).join("\n") : "Sin recomendaciones.",
+    "",
+  ].join("\n");
+}
 
 export function buildAuditReportHtml(audit) {
-  const endpoints = Array.isArray(audit?.endpoints) ? audit.endpoints : [];
-  const issues = collectIssues(audit, endpoints);
-  const recommendations = collectRecommendations(audit, endpoints);
-  const score = normalizeDisplayScore(audit?.average_score ?? audit?.score);
-  const risk = getRiskLabel(audit?.global_risk_level || audit?.risk_level);
+  const data = getReportData(audit);
   const generatedAt = new Date().toLocaleString("es-ES");
 
   return `<!doctype html>
@@ -43,37 +146,39 @@ export function buildAuditReportHtml(audit) {
   <main>
     <section class="cover">
       <div class="eyebrow">Informe técnico de auditoría API</div>
-      <h1>${escapeHtml(audit?.name || "Auditoría sin nombre")}</h1>
+      <h1>${escapeHtml(data.name)}</h1>
       <p>Generado el ${escapeHtml(generatedAt)}</p>
       <div class="grid">
-        <div class="metric"><span class="label">Score global</span><span class="value">${escapeHtml(score)}/100</span></div>
-        <div class="metric"><span class="label">Nivel de riesgo</span><span class="risk">${escapeHtml(risk)}</span></div>
-        <div class="metric"><span class="label">Endpoints analizados</span><span class="value">${escapeHtml(audit?.total_endpoints ?? endpoints.length ?? "-")}</span></div>
-        <div class="metric"><span class="label">Estado</span><span class="value">${escapeHtml(audit?.status || "completed")}</span></div>
+        <div class="metric"><span class="label">Score global</span><span class="value">${escapeHtml(data.score)}/100</span></div>
+        <div class="metric"><span class="label">Nivel de riesgo</span><span class="risk">${escapeHtml(data.risk)}</span></div>
+        <div class="metric"><span class="label">Endpoints analizados</span><span class="value">${escapeHtml(data.endpointCount)}</span></div>
+        <div class="metric"><span class="label">Estado</span><span class="value">${escapeHtml(data.status)}</span></div>
+        <div class="metric"><span class="label">Fecha auditoría</span><span class="value">${escapeHtml(data.auditDate)}</span></div>
+        <div class="metric"><span class="label">Modo</span><span class="value">${escapeHtml(data.auditMode)}</span></div>
       </div>
     </section>
 
     <section class="card">
       <h2>Resumen ejecutivo</h2>
-      <p>${escapeHtml(audit?.summary || "No hay resumen ejecutivo disponible.")}</p>
-      ${observationBlock("Observación técnica", audit?.technical_observation)}
-      ${observationBlock("Observación de seguridad", audit?.security_observation)}
-      ${observationBlock("Observación de mantenibilidad", audit?.maintainability_observation)}
+       <p>${escapeHtml(data.summary)}</p>
+       ${observationBlock("Observación técnica", data.technicalObservation)}
+       ${observationBlock("Observación de seguridad", data.securityObservation)}
+       ${observationBlock("Observación de mantenibilidad", data.maintainabilityObservation)}
     </section>
 
     <section class="card">
       <h2>Endpoints analizados</h2>
-      ${endpointTable(endpoints)}
+       ${endpointTable(data.endpoints)}
     </section>
 
     <section class="card">
       <h2>Problemas detectados</h2>
-      ${issues.length > 0 ? issues.map(issueBlock).join("") : "<p>Sin problemas detectados.</p>"}
+       ${data.issues.length > 0 ? data.issues.map(issueBlock).join("") : "<p>Sin problemas detectados.</p>"}
     </section>
 
     <section class="card">
       <h2>Recomendaciones</h2>
-      ${recommendations.length > 0 ? recommendations.map((item) => `<div class="recommendation">${escapeHtml(item)}</div>`).join("") : "<p>Sin recomendaciones.</p>"}
+       ${data.recommendations.length > 0 ? data.recommendations.map((item) => `<div class="recommendation">${escapeHtml(item)}</div>`).join("") : "<p>Sin recomendaciones.</p>"}
     </section>
 
     <details>
@@ -83,6 +188,44 @@ export function buildAuditReportHtml(audit) {
   </main>
 </body>
 </html>`;
+}
+
+function getReportData(audit) {
+  const endpoints = Array.isArray(audit?.endpoints) ? audit.endpoints : [];
+  const issues = collectIssues(audit, endpoints);
+
+  return {
+    name: audit?.name || "Auditoría sin nombre",
+    score: normalizeDisplayScore(audit?.average_score ?? audit?.score),
+    risk: getRiskLabel(audit?.global_risk_level || audit?.risk_level),
+    status: audit?.status || "completed",
+    auditMode: getAuditModeLabel(audit?.audit_mode),
+    auditDate: formatDate(audit?.created_at),
+    endpointCount: audit?.total_endpoints ?? endpoints.length ?? "-",
+    endpoints,
+    issues,
+    recommendations: collectRecommendations(audit, endpoints),
+    summary: audit?.summary || "No hay resumen ejecutivo disponible.",
+    technicalObservation: audit?.technical_observation || "No hay observación técnica disponible.",
+    securityObservation: audit?.security_observation || "No hay observación de seguridad disponible.",
+    maintainabilityObservation: audit?.maintainability_observation || "No hay observación de mantenibilidad disponible.",
+  };
+}
+
+function formatIssueMarkdown(issue) {
+  if (typeof issue === "string") return `- ${issue}`;
+  return `- **${issue?.title || "Problema detectado"}** (${getSeverityLabel(issue?.severity)}, ${getCategoryLabel(issue?.category)})\n  - Evidencia: ${issue?.evidence || "-"}\n  - Recomendación: ${issue?.recommendation || "-"}`;
+}
+
+function formatIssueText(issue) {
+  if (typeof issue === "string") return `- ${issue}`;
+  return `- ${issue?.title || "Problema detectado"} (${getSeverityLabel(issue?.severity)}, ${getCategoryLabel(issue?.category)})\n  Evidencia: ${issue?.evidence || "-"}\n  Recomendacion: ${issue?.recommendation || "-"}`;
+}
+
+function formatDate(value) {
+  if (!value) return "Sin fecha registrada";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("es-ES");
 }
 
 export function openPrintableAuditReport(audit) {

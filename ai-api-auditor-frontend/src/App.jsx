@@ -87,6 +87,7 @@ function App() {
     analysisTimeMs,
     analyzeOpenAPI,
     retryLastAudit,
+    exportAudit,
     exportResult,
     exportPdfReport,
     clearAuditState,
@@ -134,9 +135,14 @@ function App() {
             {/* RESULTADO */}
             {result && (
               <>
-                <button onClick={exportResult} style={button}>
-                  Exportar resultado JSON
-                </button>
+                <section style={exportPanel}>
+                  <h2 style={exportTitle}>Exportar auditoría</h2>
+                  <div style={exportGrid}>
+                    <button onClick={exportResult} style={button}>JSON</button>
+                    <button onClick={() => exportAudit("txt")} style={button}>TXT</button>
+                    <button onClick={() => exportAudit("markdown")} style={button}>Markdown</button>
+                  </div>
+                </section>
 
                 <button onClick={exportPdfReport} style={button}>
                   Exportar informe
@@ -258,6 +264,25 @@ const section = {
 const row = {
   display: "flex",
   justifyContent: "space-between",
+};
+
+const exportPanel = {
+  background: "#1e293b",
+  border: "1px solid #334155",
+  borderRadius: 14,
+  marginTop: 20,
+  padding: 16,
+};
+
+const exportTitle = {
+  fontSize: 18,
+  margin: 0,
+};
+
+const exportGrid = {
+  display: "grid",
+  gap: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
 };
 
 export default App;

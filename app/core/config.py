@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
     PROJECT_NAME: str = "AI API Auditor"
     VERSION: str = "1.0.0"
     DATABASE_URL: str = "sqlite:///./ai_api_auditor.db"
@@ -21,9 +23,6 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()
