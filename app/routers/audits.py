@@ -80,6 +80,7 @@ def parse_audit(audit: Audit) -> AuditResponse:
         endpoints=json.loads(audit.openapi_endpoints) if audit.openapi_endpoints else None,
         status=normalize_audit_status(audit.status),
         error_message=audit.error_message,
+        audit_mode=audit.audit_mode or "enterprise",
     )
 
 
@@ -299,6 +300,7 @@ def create_openapi_audit(
         average_score=0.0,
         global_risk_level="high",
         openapi_endpoints=json.dumps([]),
+        audit_mode=data.audit_mode,
         status="processing",
     )
 
@@ -319,7 +321,11 @@ def create_openapi_audit(
         ) from exc
 
     try:
-        endpoint_results = analyze_openapi_schema(data.openapi_schema, endpoints=endpoints)
+        endpoint_results = analyze_openapi_schema(
+            data.openapi_schema,
+            endpoints=endpoints,
+            audit_mode=data.audit_mode,
+        )
     except OllamaAnalysisError as exc:
         audit.status = "failed"
         audit.error_message = str(exc)
@@ -387,4 +393,5 @@ def create_openapi_audit(
         endpoints=endpoint_results,
         status=audit.status,
         error_message=audit.error_message,
+        audit_mode=audit.audit_mode,
     )

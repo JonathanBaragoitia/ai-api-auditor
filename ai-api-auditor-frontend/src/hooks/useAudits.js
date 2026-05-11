@@ -12,6 +12,7 @@ export function useAudits(token, onLogout) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [lastInput, setLastInput] = useState("");
+  const [lastAuditMode, setLastAuditMode] = useState("enterprise");
   const [analysisTimeMs, setAnalysisTimeMs] = useState(null);
 
   const clearAuditState = useCallback(() => {
@@ -20,6 +21,7 @@ export function useAudits(token, onLogout) {
     setError(null);
     setSuccess(null);
     setLastInput("");
+    setLastAuditMode("enterprise");
     setAnalysisTimeMs(null);
   }, []);
 
@@ -44,13 +46,14 @@ export function useAudits(token, onLogout) {
     return () => clearTimeout(timer);
   }, [loadHistory]);
 
-  const analyzeOpenAPI = async (input) => {
+  const analyzeOpenAPI = async (input, auditMode = "enterprise") => {
     const startedAt = performance.now();
     setLoading(true);
     setError(null);
     setSuccess(null);
     setResult(null);
     setLastInput(input);
+    setLastAuditMode(auditMode);
     setAnalysisTimeMs(null);
 
     try {
@@ -63,6 +66,7 @@ export function useAudits(token, onLogout) {
           body: JSON.stringify({
             name: "Frontend Audit",
             openapi_schema: parsed,
+            audit_mode: auditMode,
           }),
         },
         token,
@@ -86,6 +90,7 @@ export function useAudits(token, onLogout) {
         name: "Frontend Audit",
         status: backendError?.status || "failed",
         error_message: message,
+        audit_mode: auditMode,
         total_endpoints: 0,
         average_score: 0,
         global_risk_level: "high",
@@ -100,7 +105,7 @@ export function useAudits(token, onLogout) {
 
   const retryLastAudit = () => {
     if (lastInput && !loading) {
-      analyzeOpenAPI(lastInput);
+      analyzeOpenAPI(lastInput, lastAuditMode);
     }
   };
 

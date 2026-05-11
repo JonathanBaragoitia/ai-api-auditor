@@ -227,7 +227,7 @@ def test_user_cannot_access_other_user_audit_detail():
 
 
 def test_openapi_audit_returns_total_endpoints(monkeypatch):
-    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
         return [
             OpenAPIEndpointAnalysis(
                 method="GET",
@@ -271,10 +271,11 @@ def test_openapi_audit_returns_total_endpoints(monkeypatch):
     assert isinstance(data["endpoints"], list)
     assert data["status"] == "completed"
     assert data["error_message"] is None
+    assert data["audit_mode"] == "enterprise"
 
 
 def test_openapi_audit_rate_limited(monkeypatch):
-    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
         return [
             OpenAPIEndpointAnalysis(
                 method="GET",
@@ -311,7 +312,7 @@ def test_openapi_audit_rate_limited(monkeypatch):
 
 
 def test_openapi_audit_is_persisted_in_history(monkeypatch):
-    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
         return [
             OpenAPIEndpointAnalysis(
                 method="GET",
@@ -350,7 +351,9 @@ def test_openapi_audit_is_persisted_in_history(monkeypatch):
     assert history_item["total_endpoints"] == 1
     assert isinstance(history_item["endpoints"], list)
     assert history_item["status"] == "completed"
+    assert history_item["audit_mode"] == "enterprise"
     assert detail["name"] == payload["name"]
+    assert detail["audit_mode"] == "enterprise"
     assert detail["endpoints"][0]["path"] == "/users"
 
 
@@ -566,3 +569,79 @@ def test_openapi_audit_accepts_structured_ai_issues(monkeypatch):
     assert issue["severity"] == "critical"
     assert issue["category"] == "security"
     assert issue["recommendation"] == "Añadir autenticación JWT u OAuth2."
+
+
+def test_openapi_audit_accepts_and_persists_audit_mode(monkeypatch):
+    captured = {}
+
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
+        captured["audit_mode"] = audit_mode
+        return [
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/users",
+                summary="Lista usuarios",
+                score=7.0,
+                risk_level="medium",
+                issues=[],
+                recommendations=[],
+            )
+        ]
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.routers.audits.analyze_openapi_schema", fake_analyze_openapi_schema)
+
+    payload = {
+        "name": "OpenAPI modo seguridad",
+        "audit_mode": "security",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/openapi", json=payload, headers=headers)
+        list_response = client.get("/audits/", headers=headers)
+
+    assert create_response.status_code == 200
+    assert captured["audit_mode"] == "security"
+    assert create_response.json()["audit_mode"] == "security"
+    assert list_response.json()[0]["audit_mode"] == "security"
+
+
+def test_openapi_audit_prompt_changes_by_audit_mode(monkeypatch):
+    prompts = []
+
+    def fake_analyze_with_ollama(prompt):
+        prompts.append(prompt)
+        return {
+            "score": 8,
+            "risk_level": "low",
+            "issues": [],
+            "recommendations": [],
+            "summary": "Documentación revisada.",
+        }
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.services.openapi_service.analyze_with_ollama", fake_analyze_with_ollama)
+
+    payload = {
+        "name": "OpenAPI modo documentación",
+        "audit_mode": "documentation",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    assert response.status_code == 200
+    assert "Modo de auditoría seleccionado: documentation" in prompts[0]
+    assert "summaries, descriptions, schemas, examples" in prompts[0]

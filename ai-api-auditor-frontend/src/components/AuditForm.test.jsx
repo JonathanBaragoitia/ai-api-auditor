@@ -1,7 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AuditForm from "./AuditForm";
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("AuditForm", () => {
   it("renderiza textarea y botón de análisis", () => {
@@ -9,6 +13,8 @@ describe("AuditForm", () => {
       <AuditForm
         input=""
         onInputChange={vi.fn()}
+        auditMode="enterprise"
+        onAuditModeChange={vi.fn()}
         onAnalyze={vi.fn()}
         loading={false}
         error={null}
@@ -18,6 +24,31 @@ describe("AuditForm", () => {
 
     expect(screen.getByPlaceholderText("Pega tu OpenAPI JSON aquí...")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analizar API" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Seguridad/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Diseño REST/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Documentación/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Enterprise/i })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("permite seleccionar el modo de auditoría", () => {
+    const onAuditModeChange = vi.fn();
+
+    render(
+      <AuditForm
+        input=""
+        onInputChange={vi.fn()}
+        auditMode="enterprise"
+        onAuditModeChange={onAuditModeChange}
+        onAnalyze={vi.fn()}
+        loading={false}
+        error={null}
+        success={null}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Seguridad/i }));
+
+    expect(onAuditModeChange).toHaveBeenCalledWith("security");
   });
 
   it("muestra loading moderno y deshabilita el botón durante el análisis", () => {

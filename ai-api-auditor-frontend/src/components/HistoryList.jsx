@@ -4,7 +4,7 @@ import AIObservationCards from "./AIObservationCards";
 import AuditDetailModal from "./AuditDetailModal";
 import Badge from "./Badge";
 import IssueList from "./IssueList";
-import { normalizeDisplayScore } from "../utils/display";
+import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
 
 const issueToSearchText = (issue) => {
   if (typeof issue === "string") {
@@ -181,6 +181,7 @@ function HistoryList({
               </div>
 
               <p><b>{getFriendlyEndpointName(a?.path)}</b></p>
+              <p style={mutedTextStyle}>Modo: {getAuditModeLabel(a?.audit_mode)}</p>
               <p>Puntuación: {normalizeDisplayScore(a?.score)}/100</p>
               {a?.error_message && <p style={errorStyle}>{translate(a.error_message)}</p>}
 
@@ -314,6 +315,10 @@ const errorStyle = {
   borderRadius: 10,
   color: "#fecaca",
   padding: 10,
+};
+
+const mutedTextStyle = {
+  color: "#94a3b8",
 };
 
 export default HistoryList;

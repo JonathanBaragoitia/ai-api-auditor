@@ -7,9 +7,34 @@ const loadingSteps = [
   "Generando informe...",
 ];
 
+const auditModes = [
+  {
+    value: "security",
+    title: "Seguridad",
+    description: "Autenticación, autorización, datos expuestos y rate limiting.",
+  },
+  {
+    value: "rest_design",
+    title: "Diseño REST",
+    description: "Endpoints, métodos HTTP, códigos de estado, paginación y consistencia.",
+  },
+  {
+    value: "documentation",
+    title: "Documentación",
+    description: "Summaries, descriptions, schemas, examples y responses.",
+  },
+  {
+    value: "enterprise",
+    title: "Enterprise",
+    description: "Seguridad, mantenibilidad, observabilidad, escalabilidad y consistencia.",
+  },
+];
+
 function AuditForm({
   input,
   onInputChange,
+  auditMode = "enterprise",
+  onAuditModeChange,
   onAnalyze,
   loading,
   error,
@@ -41,6 +66,33 @@ function AuditForm({
   return (
     <>
       <style>{"@keyframes audit-spin { to { transform: rotate(360deg); } }"}</style>
+      <section style={modePanelStyle} aria-label="Modo de auditoría">
+        <div style={modeHeaderStyle}>
+          <h2 style={modeTitleStyle}>Modo de auditoría</h2>
+          <p style={modeHintStyle}>Elige el enfoque principal antes de analizar la API.</p>
+        </div>
+
+        <div style={modeGridStyle}>
+          {auditModes.map((mode) => {
+            const selected = auditMode === mode.value;
+            return (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => onAuditModeChange?.(mode.value)}
+                disabled={loading}
+                aria-label={mode.title}
+                aria-pressed={selected}
+                style={{ ...modeCardStyle, ...(selected ? selectedModeCardStyle : {}) }}
+              >
+                <strong>{mode.title}</strong>
+                <span>{mode.description}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <textarea
         placeholder="Pega tu OpenAPI JSON aquí..."
         value={input}
@@ -108,6 +160,54 @@ const loadingBoxStyle = {
   marginTop: 14,
   padding: 14,
   boxShadow: "0 14px 40px rgba(15, 23, 42, 0.35)",
+};
+
+const modePanelStyle = {
+  background: "#1e293b",
+  border: "1px solid #334155",
+  borderRadius: 14,
+  marginTop: 20,
+  padding: 16,
+};
+
+const modeHeaderStyle = {
+  marginBottom: 12,
+};
+
+const modeTitleStyle = {
+  fontSize: 18,
+  margin: 0,
+};
+
+const modeHintStyle = {
+  color: "#94a3b8",
+  fontSize: 13,
+  margin: "6px 0 0",
+};
+
+const modeGridStyle = {
+  display: "grid",
+  gap: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+};
+
+const modeCardStyle = {
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: 12,
+  color: "#e2e8f0",
+  cursor: "pointer",
+  display: "grid",
+  gap: 6,
+  padding: 13,
+  textAlign: "left",
+  transition: "border-color 160ms ease, transform 160ms ease, background 160ms ease",
+};
+
+const selectedModeCardStyle = {
+  background: "linear-gradient(135deg, rgba(79, 70, 229, 0.35), rgba(14, 165, 233, 0.18))",
+  borderColor: "#818cf8",
+  transform: "translateY(-1px)",
 };
 
 const loadingHeaderStyle = {

@@ -25,6 +25,7 @@ describe("HistoryList", () => {
             issues: [],
             recommendations: [],
             status: "failed",
+            audit_mode: "security",
             error_message: "No se pudo completar la auditoría.",
             created_at: "2026-05-07T00:00:00",
           },
@@ -36,6 +37,7 @@ describe("HistoryList", () => {
     expect(screen.getByText("Historial")).toBeInTheDocument();
     expect(screen.getByText("Auditoría usuarios")).toBeInTheDocument();
     expect(screen.getByText("Usuarios")).toBeInTheDocument();
+    expect(screen.getByText("Modo: Seguridad")).toBeInTheDocument();
     expect(screen.getByText("Fallida")).toBeInTheDocument();
     expect(screen.getByText("No se pudo completar la auditoría.")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Buscar auditoría, endpoint o recomendación...")).toBeInTheDocument();
@@ -66,5 +68,6 @@ describe("HistoryList", () => {
 
     expect(screen.getByText("Auditoría completada")).toBeInTheDocument();
     expect(screen.getByText("Completada")).toBeInTheDocument();
+    expect(screen.getByText("Modo: Enterprise")).toBeInTheDocument();
   });
 });

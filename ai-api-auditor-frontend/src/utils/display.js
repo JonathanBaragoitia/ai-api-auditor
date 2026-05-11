@@ -111,3 +111,12 @@ export function getStatusLabel(status) {
     failed: "Fallida",
   }[normalizeStatus(status)] || "Completada";
 }
+
+export function getAuditModeLabel(mode) {
+  return {
+    security: "Seguridad",
+    rest_design: "Diseño REST",
+    documentation: "Documentación",
+    enterprise: "Enterprise",
+  }[mode || "enterprise"] || "Enterprise";
+}

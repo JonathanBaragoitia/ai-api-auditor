@@ -3,7 +3,7 @@ import { useState } from "react";
 import AIObservationCards from "./AIObservationCards";
 import Badge from "./Badge";
 import IssueList from "./IssueList";
-import { normalizeDisplayScore } from "../utils/display";
+import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
 
 const tabs = ["Resumen", "Endpoints", "Problemas", "Recomendaciones", "JSON técnico"];
 
@@ -48,6 +48,7 @@ function AuditDetailModal({
       <div style={metaGridStyle}>
         <Metric label="Endpoint" value={getFriendlyEndpointName(audit?.path)} />
         <Metric label="Método" value={audit?.method || "-"} />
+        <Metric label="Modo" value={getAuditModeLabel(audit?.audit_mode)} />
         <Metric label="Endpoints analizados" value={endpointCount} />
         <Metric label="Riesgo global" value={getRiskLabel(riskLevel)} />
       </div>
@@ -78,6 +79,7 @@ function AuditDetailModal({
           <div style={metaGridStyle}>
             <Metric label="Auditoría" value={translate(audit?.name)} />
             <Metric label="Tipo" value={auditType} />
+            <Metric label="Modo" value={getAuditModeLabel(audit?.audit_mode)} />
             <Metric label="Score normalizado" value={`${score}/100`} />
             <Metric label="Endpoints" value={endpointCount} />
           </div>

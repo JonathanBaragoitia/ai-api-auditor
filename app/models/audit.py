@@ -38,6 +38,7 @@ class Audit(Base):
     average_score = Column(Float, nullable=True)
     global_risk_level = Column(String(50), nullable=True)
     openapi_endpoints = Column(Text, nullable=True)
+    audit_mode = Column(String(30), nullable=False, default="enterprise")
 
     status = Column(String(20), nullable=False, default="completed")
     error_message = Column(Text, nullable=True)

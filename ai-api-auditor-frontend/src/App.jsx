@@ -68,6 +68,7 @@ const getFriendlyEndpointName = (path) => {
 
 function App() {
   const [input, setInput] = useState("");
+  const [auditMode, setAuditMode] = useState("enterprise");
   const { token, login, register, logout } = useAuth();
 
   const getColor = (risk) => {
@@ -117,7 +118,9 @@ function App() {
             <AuditForm
               input={input}
               onInputChange={setInput}
-              onAnalyze={() => analyzeOpenAPI(input)}
+              auditMode={auditMode}
+              onAuditModeChange={setAuditMode}
+              onAnalyze={() => analyzeOpenAPI(input, auditMode)}
               loading={auditLoading}
               error={auditError}
               success={auditSuccess}

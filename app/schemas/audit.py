@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 
 AuditStatus = Literal["pending", "processing", "completed", "failed"]
+AuditMode = Literal["security", "rest_design", "documentation", "enterprise"]
 
 
 class StructuredIssue(BaseModel):
@@ -39,6 +40,7 @@ class AuditAnalysis(BaseModel):
 class OpenAPIAuditRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=150)
     openapi_schema: dict[str, Any]
+    audit_mode: AuditMode = "enterprise"
 
 
 class OpenAPIEndpointAnalysis(BaseModel):
@@ -78,6 +80,7 @@ class AuditResponse(BaseModel):
     endpoints: list[OpenAPIEndpointAnalysis] | None = None
     status: AuditStatus = "completed"
     error_message: str | None = None
+    audit_mode: AuditMode = "enterprise"
 
     class Config:
         from_attributes = True
@@ -96,3 +99,4 @@ class OpenAPIAuditResponse(BaseModel):
     endpoints: list[OpenAPIEndpointAnalysis]
     status: AuditStatus = "completed"
     error_message: str | None = None
+    audit_mode: AuditMode = "enterprise"

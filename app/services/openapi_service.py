@@ -19,6 +19,24 @@ from app.utils.scoring import calculate_risk_level
 
 logger = logging.getLogger(__name__)
 VALID_REST_METHODS = {"get", "post", "put", "patch", "delete"}
+AUDIT_MODE_INSTRUCTIONS = {
+    "security": (
+        "Enfoca la auditoría en seguridad: autenticación, autorización, exposición de datos, "
+        "rate limiting y mensajes de error que puedan revelar información sensible."
+    ),
+    "rest_design": (
+        "Enfoca la auditoría en diseño REST: nombres de endpoints, métodos HTTP, códigos de estado, "
+        "paginación, filtros y consistencia del contrato."
+    ),
+    "documentation": (
+        "Enfoca la auditoría en documentación OpenAPI: summaries, descriptions, schemas, examples "
+        "y responses completos y útiles."
+    ),
+    "enterprise": (
+        "Enfoca la auditoría en preparación enterprise: seguridad, mantenibilidad, observabilidad, "
+        "escalabilidad y consistencia general."
+    ),
+}
 
 
 class OpenAPIValidationError(ValueError):
@@ -134,8 +152,13 @@ def validate_openapi_schema(openapi_schema: dict) -> list[dict]:
     return endpoints
 
 
-def analyze_openapi_schema(openapi_schema: dict, endpoints: list[dict] | None = None) -> list[OpenAPIEndpointAnalysis]:
+def analyze_openapi_schema(
+    openapi_schema: dict,
+    endpoints: list[dict] | None = None,
+    audit_mode: str = "enterprise",
+) -> list[OpenAPIEndpointAnalysis]:
     endpoints = endpoints if endpoints is not None else extract_openapi_endpoints(openapi_schema)
+    mode_instructions = AUDIT_MODE_INSTRUCTIONS.get(audit_mode, AUDIT_MODE_INSTRUCTIONS["enterprise"])
 
     results = []
 
@@ -145,6 +168,9 @@ def analyze_openapi_schema(openapi_schema: dict, endpoints: list[dict] | None = 
 
         {SPANISH_OUTPUT_INSTRUCTIONS}
 
+        Modo de auditoría seleccionado: {audit_mode}
+        {mode_instructions}
+
         Método: {endpoint["method"]}
         Ruta: {endpoint["path"]}
         Resumen original de OpenAPI: {endpoint["summary"]}
@@ -152,7 +178,7 @@ def analyze_openapi_schema(openapi_schema: dict, endpoints: list[dict] | None = 
         Parámetros: {endpoint["parameters"]}
         Respuestas: {endpoint["responses"]}
 
-        Evalúa diseño REST, seguridad, paginación, documentación y buenas prácticas.
+        Evalúa con prioridad el modo seleccionado, sin omitir hallazgos críticos de otros ámbitos.
         Si el resumen original está en inglés, genera un summary en español profesional.
         Devuelve issues estructurados, recommendations y observaciones narrativas siempre en español.
         Cada issue debe incluir title, severity, category, evidence y recommendation.

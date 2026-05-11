@@ -21,6 +21,7 @@ const audit = {
   risk_level: "medium",
   global_risk_level: "medium",
   created_at: "2026-05-07T00:00:00",
+  audit_mode: "rest_design",
   summary: "Resumen ejecutivo de la auditoría.",
   technical_observation: "Observación técnica.",
   security_observation: "Observación de seguridad.",
@@ -54,6 +55,7 @@ describe("AuditDetailModal", () => {
     expect(screen.getAllByText("Auditoría usuarios").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Auditoría OpenAPI").length).toBeGreaterThan(0);
     expect(screen.getByText("75")).toBeInTheDocument();
+    expect(screen.getAllByText("Diseño REST").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Resumen" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Endpoints" })).toBeInTheDocument();
     expect(screen.getByText("Resumen ejecutivo de la auditoría.")).toBeInTheDocument();
@@ -73,5 +75,14 @@ describe("AuditDetailModal", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "JSON técnico" })[0]);
     expect(screen.getByText(/"name": "Auditoría usuarios"/)).toBeInTheDocument();
+  });
+
+  it("muestra Enterprise como modo por defecto en auditorías antiguas", () => {
+    const legacyAudit = { ...audit };
+    delete legacyAudit.audit_mode;
+
+    render(<AuditDetailModal audit={legacyAudit} onClose={vi.fn()} {...helpers} />);
+
+    expect(screen.getAllByText("Enterprise").length).toBeGreaterThan(0);
   });
 });
