@@ -7,6 +7,10 @@ repos:
       - id: check-yaml
       - id: check-json
       - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: mixed-line-ending
+        args: [--fix=lf]
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
@@ -15,4 +19,25 @@ repos:
         args:
           - --max-line-length=120
           - --extend-ignore=E203,W503
-        files: ^app/
+        files: ^(app|tests)/
+
+  - repo: local
+    hooks:
+      - id: block-generated-python-artifacts
+        name: block generated Python artifacts
+        entry: No subas __pycache__ ni archivos .pyc; elimina esos artefactos antes de commitear.
+        language: fail
+        files: (^|/)__pycache__/|\.pyc$
+
+      - id: block-local-databases
+        name: block local database files
+        entry: No subas bases de datos locales .db; usa migraciones y variables de entorno.
+        language: fail
+        files: \.db$
+
+      - id: frontend-eslint
+        name: frontend eslint
+        entry: npm --prefix ai-api-auditor-frontend run lint
+        language: system
+        pass_filenames: false
+        files: ^ai-api-auditor-frontend/.*\.(js|jsx)$

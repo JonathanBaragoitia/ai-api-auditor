@@ -250,11 +250,38 @@ Después de eso, los siguientes cambios deben aplicarse siempre con nuevas migra
 
 ### Pre-commit hooks
 
+El proyecto incluye hooks para detectar errores básicos antes de commitear:
+
+- espacios finales y falta de newline final.
+- YAML/JSON inválido.
+- archivos grandes añadidos por accidente.
+- marcadores de conflictos de merge.
+- `breakpoint()`/debug statements en Python.
+- lint backend con `flake8`.
+- lint frontend con ESLint.
+- bloqueo de artefactos generados como `__pycache__`, `.pyc` y bases locales `.db`.
+
+Instalar hooks localmente:
+
 ```bash
-pip install pre-commit
+python -m pip install pre-commit
 pre-commit install
+```
+
+Ejecutar todos los hooks manualmente:
+
+```bash
 pre-commit run --all-files
 ```
+
+Ejecutar un hook concreto:
+
+```bash
+pre-commit run frontend-eslint --all-files
+pre-commit run flake8 --all-files
+```
+
+Si un hook modifica archivos automáticamente, revisa el diff y vuelve a ejecutar `pre-commit run --all-files` antes de commitear.
 
 ## Variables de entorno
 
