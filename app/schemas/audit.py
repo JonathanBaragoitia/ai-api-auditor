@@ -14,6 +14,7 @@ class StructuredIssue(BaseModel):
     category: str
     evidence: str
     recommendation: str
+    fix_suggestion: dict[str, Any] | None = None
 
 
 class ManualAuditRequest(BaseModel):

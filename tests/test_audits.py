@@ -537,8 +537,15 @@ def test_openapi_audit_accepts_structured_ai_issues(monkeypatch):
                     "category": "security",
                     "evidence": "GET /users no declara security scheme.",
                     "recommendation": "Añadir autenticación JWT u OAuth2.",
+                    "fix_suggestion": {
+                        "title": "Declarar esquema JWT",
+                        "explanation": "Añade un securityScheme Bearer y referencia el esquema en la operación.",
+                        "openapi_example": "components:\n  securitySchemes:\n    bearerAuth:\n      type: http",
+                        "error_response_example": '{"detail":"Token inválido"}',
+                        "priority": "alta",
+                    },
                 }
-            ],
+                ],
             "recommendations": ["Añadir controles de acceso."],
             "summary": "Endpoint con exposición sensible.",
             "technical_observation": "El contrato requiere controles explícitos.",
@@ -569,6 +576,41 @@ def test_openapi_audit_accepts_structured_ai_issues(monkeypatch):
     assert issue["severity"] == "critical"
     assert issue["category"] == "security"
     assert issue["recommendation"] == "Añadir autenticación JWT u OAuth2."
+    assert issue["fix_suggestion"]["title"] == "Declarar esquema JWT"
+    assert issue["fix_suggestion"]["priority"] == "alta"
+
+
+def test_openapi_audit_adds_textual_fix_suggestion_when_missing(monkeypatch):
+    def fake_analyze_with_ollama(_prompt):
+        return {
+            "score": 5,
+            "risk_level": "medium",
+            "issues": ["Falta paginación en endpoint de listado"],
+            "recommendations": ["Añadir parámetros page y limit."],
+        }
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.services.openapi_service.analyze_with_ollama", fake_analyze_with_ollama)
+
+    payload = {
+        "name": "OpenAPI con sugerencia fallback",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    issue = response.json()["endpoints"][0]["issues"][0]
+
+    assert response.status_code == 200
+    assert issue["fix_suggestion"]["title"].startswith("Corregir:")
+    assert issue["fix_suggestion"]["explanation"] == "Añadir parámetros page y limit."
+    assert issue["fix_suggestion"]["priority"] == "media"
 
 
 def test_openapi_audit_accepts_and_persists_audit_mode(monkeypatch):

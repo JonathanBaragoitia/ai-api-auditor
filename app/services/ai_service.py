@@ -18,6 +18,7 @@ class OllamaAnalysisError(RuntimeError):
 
 
 ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
+ALLOWED_FIX_PRIORITIES = {"baja", "media", "alta"}
 ALLOWED_CATEGORIES = {
     "security",
     "validation",
@@ -35,6 +36,9 @@ TEXT_LIMITS = {
     "issue_title": 90,
     "issue_evidence": 180,
     "recommendation": 150,
+    "fix_title": 90,
+    "fix_explanation": 220,
+    "fix_example": 600,
 }
 
 
@@ -225,7 +229,8 @@ def build_structured_issue(
     category: object = "maintainability",
     evidence: object | None = None,
     recommendation: object | None = None,
-) -> dict[str, str]:
+    fix_suggestion: object | None = None,
+) -> dict[str, object]:
     normalized_title = trim_text(normalize_text(title, "Problema detectado"), TEXT_LIMITS["issue_title"])
     normalized_severity = str(severity or "medium").lower()
     normalized_category = str(category or "maintainability").lower()
@@ -236,15 +241,66 @@ def build_structured_issue(
     if normalized_category not in ALLOWED_CATEGORIES:
         normalized_category = "maintainability"
 
+    normalized_recommendation = trim_text(
+        normalize_text(recommendation, "Corregir este hallazgo técnico."),
+        TEXT_LIMITS["recommendation"],
+    )
+
     return {
         "title": normalized_title,
         "severity": normalized_severity,
         "category": normalized_category,
         "evidence": trim_text(normalize_text(evidence, normalized_title), TEXT_LIMITS["issue_evidence"]),
-        "recommendation": trim_text(
-            normalize_text(recommendation, "Corregir este hallazgo técnico."),
-            TEXT_LIMITS["recommendation"],
+        "recommendation": normalized_recommendation,
+        "fix_suggestion": normalize_fix_suggestion(
+            fix_suggestion,
+            normalized_title,
+            normalized_recommendation,
+            normalized_severity,
         ),
+    }
+
+
+def normalize_fix_priority(value: object, severity: str) -> str:
+    priority = normalize_plain_text(value).lower()
+    if priority in ALLOWED_FIX_PRIORITIES:
+        return priority
+    if severity in {"critical", "high"}:
+        return "alta"
+    if severity == "low":
+        return "baja"
+    return "media"
+
+
+def normalize_fix_suggestion(
+    value: object,
+    issue_title: str,
+    default_recommendation: str,
+    severity: str,
+) -> dict[str, object]:
+    # Cada issue mantiene una sugerencia autocontenida. Si la IA no incluye ejemplos,
+    # devolvemos una guía textual clara sin forzar código inventado.
+    if isinstance(value, dict):
+        title = value.get("title") or value.get("titulo") or f"Corregir: {issue_title}"
+        explanation = value.get("explanation") or value.get("explicacion") or default_recommendation
+        openapi_example = value.get("openapi_example") or value.get("ejemplo_openapi")
+        error_response_example = value.get("error_response_example") or value.get("ejemplo_error")
+        priority = value.get("priority") or value.get("prioridad")
+    else:
+        title = f"Corregir: {issue_title}"
+        explanation = value or default_recommendation
+        openapi_example = None
+        error_response_example = None
+        priority = None
+
+    return {
+        "title": trim_text(title, TEXT_LIMITS["fix_title"]),
+        "explanation": trim_text(explanation, TEXT_LIMITS["fix_explanation"]),
+        "openapi_example": trim_text(openapi_example, TEXT_LIMITS["fix_example"]) if openapi_example else None,
+        "error_response_example": (
+            trim_text(error_response_example, TEXT_LIMITS["fix_example"]) if error_response_example else None
+        ),
+        "priority": normalize_fix_priority(priority, severity),
     }
 
 
@@ -259,6 +315,7 @@ def normalize_issue(
             issue.get("category"),
             issue.get("evidence"),
             issue.get("recommendation") or default_recommendation,
+            issue.get("fix_suggestion") or issue.get("fixSuggestion"),
         )
 
     return build_structured_issue(
@@ -267,6 +324,7 @@ def normalize_issue(
         "maintainability",
         issue,
         default_recommendation,
+        None,
     )
 
 
@@ -431,6 +489,7 @@ def analyze_with_ollama(prompt: str) -> dict:
     - maintainability_observation: solo documentación, evolución, observabilidad, escalabilidad y mantenibilidad.
     - issues: hallazgos concretos y verificables; evita títulos genéricos.
     - recommendations: frases cortas, directas y accionables; no repitas recomendaciones ya incluidas en issues.
+    - fix_suggestion: solución técnica concreta para cada issue; incluye ejemplos solo si son aplicables.
 
     Reglas anti-repetición:
     - No uses la misma frase en dos campos.
@@ -442,6 +501,7 @@ def analyze_with_ollama(prompt: str) -> dict:
     - summary: hasta 180 caracteres.
     - cada observación: hasta 240 caracteres.
     - cada title/evidence/recommendation: una frase breve.
+    - cada fix_suggestion debe ser práctico, breve y directamente implementable.
 
     Devuelve exactamente esta estructura JSON:
 
@@ -455,7 +515,14 @@ def analyze_with_ollama(prompt: str) -> dict:
           "category": "security" | "validation" | "documentation" | "performance" | "rest_design" |
             "maintainability" | "observability",
           "evidence": "evidencia concreta observada en el endpoint en español",
-          "recommendation": "acción recomendada para corregir el problema en español"
+          "recommendation": "acción recomendada para corregir el problema en español",
+          "fix_suggestion": {{
+            "title": "título breve de la solución en español",
+            "explanation": "explicación breve de cómo aplicar la corrección",
+            "openapi_example": "fragmento OpenAPI recomendado si aplica; null si no aplica",
+            "error_response_example": "ejemplo JSON de respuesta de error si aplica; null si no aplica",
+            "priority": "baja" | "media" | "alta"
+          }}
         }}
       ],
       "recommendations": ["recomendación accionable en español"],
