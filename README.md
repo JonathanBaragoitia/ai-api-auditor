@@ -204,6 +204,17 @@ DATABASE_URL_DOCKER=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password
 
 ### Migraciones Alembic
 
+El proyecto usa Alembic para versionar el esquema de base de datos. No borres `ai_api_auditor.db` cada vez que se añadan columnas: aplica migraciones.
+
+La cadena actual de migraciones cubre el estado completo de los modelos:
+
+- `users`
+- `audits`
+- ownership multiusuario con `user_id`
+- resultados OpenAPI persistidos
+- observaciones IA
+- estado de ejecución con `status` y `error_message`
+
 Crear una nueva migración:
 
 ```bash
@@ -216,12 +227,26 @@ Aplicar migraciones:
 python -m alembic upgrade head
 ```
 
-Si ya existe una base creada antes de Alembic:
+Ver migración actual aplicada:
+
+```bash
+python -m alembic current
+```
+
+Si tu base local fue creada antes de Alembic pero ya tiene las tablas iniciales `users` y `audits`, marca la migración inicial como aplicada y luego sube a `head`:
 
 ```bash
 python -m alembic stamp 001_initial_schema
 python -m alembic upgrade head
 ```
+
+Si la base local está muy desactualizada, tiene datos descartables o falla por columnas antiguas (`no such column: audits.status`, `audits.user_id`, etc.), la opción más simple en desarrollo es borrar una última vez `ai_api_auditor.db` y ejecutar:
+
+```bash
+python -m alembic upgrade head
+```
+
+Después de eso, los siguientes cambios deben aplicarse siempre con nuevas migraciones.
 
 ### Pre-commit hooks
 
