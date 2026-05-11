@@ -131,7 +131,7 @@ function App() {
                 </button>
 
                 <button onClick={exportPdfReport} style={button}>
-                  Exportar informe PDF
+                  Exportar informe
                 </button>
 
                 <SummaryCards
