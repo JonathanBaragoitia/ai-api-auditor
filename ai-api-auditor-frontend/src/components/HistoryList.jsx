@@ -29,6 +29,7 @@ function HistoryList({
   getColor,
   getRiskLabel,
   getFriendlyEndpointName,
+  onUpdateMetadata,
 }) {
   const [riskFilter, setRiskFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -44,6 +45,10 @@ function HistoryList({
     setSearch("");
     setMinScore("");
     setSortBy("recent");
+  };
+
+  const handleMetadataSaved = (updatedAudit) => {
+    setSelectedAudit(updatedAudit);
   };
 
   const filteredHistory = historyItems
@@ -182,6 +187,11 @@ function HistoryList({
 
               <p><b>{getFriendlyEndpointName(a?.path)}</b></p>
               <p style={mutedTextStyle}>Modo: {getAuditModeLabel(a?.audit_mode)}</p>
+              {Array.isArray(a?.tags) && a.tags.length > 0 && (
+                <div style={tagListStyle}>
+                  {a.tags.map((tag) => <span key={tag} style={tagStyle}>{tag}</span>)}
+                </div>
+              )}
               <p>Puntuación: {normalizeDisplayScore(a?.score)}/100</p>
               {a?.error_message && <p style={errorStyle}>{translate(a.error_message)}</p>}
 
@@ -216,6 +226,8 @@ function HistoryList({
         getColor={getColor}
         getRiskLabel={getRiskLabel}
         getFriendlyEndpointName={getFriendlyEndpointName}
+        onUpdateMetadata={onUpdateMetadata}
+        onMetadataSaved={handleMetadataSaved}
       />
     </>
   );
@@ -319,6 +331,23 @@ const errorStyle = {
 
 const mutedTextStyle = {
   color: "#94a3b8",
+};
+
+const tagListStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+  margin: "8px 0",
+};
+
+const tagStyle = {
+  background: "#312e81",
+  border: "1px solid #4f46e5",
+  borderRadius: 999,
+  color: "#c7d2fe",
+  fontSize: 12,
+  fontWeight: 700,
+  padding: "5px 8px",
 };
 
 export default HistoryList;

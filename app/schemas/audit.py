@@ -44,6 +44,11 @@ class OpenAPIAuditRequest(BaseModel):
     audit_mode: AuditMode = "enterprise"
 
 
+class AuditMetadataUpdate(BaseModel):
+    notes: str | None = Field(default=None, max_length=5000)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+
+
 class OpenAPIEndpointAnalysis(BaseModel):
     method: str
     path: str
@@ -84,6 +89,8 @@ class AuditResponse(BaseModel):
     status: AuditStatus = "completed"
     error_message: str | None = None
     audit_mode: AuditMode = "enterprise"
+    notes: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class OpenAPIAuditResponse(BaseModel):
@@ -100,3 +107,5 @@ class OpenAPIAuditResponse(BaseModel):
     status: AuditStatus = "completed"
     error_message: str | None = None
     audit_mode: AuditMode = "enterprise"
+    notes: str | None = None
+    tags: list[str] = Field(default_factory=list)

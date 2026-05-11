@@ -93,4 +93,36 @@ describe("useAudits", () => {
     expect(clickMock).toHaveBeenCalledTimes(1);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:auditoria");
   });
+
+  it("actualiza notas y etiquetas de una auditoría", async () => {
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      if (url.endsWith("/audits/")) {
+        return new Response(JSON.stringify([{ id: 1, name: "Auditoría usuarios" }]), { status: 200 });
+      }
+
+      if (url.endsWith("/audits/1/metadata")) {
+        return new Response(
+          JSON.stringify({ id: 1, name: "Auditoría usuarios", notes: "Nota interna", tags: ["demo"] }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({}), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useAudits("token", vi.fn()));
+
+    await waitFor(() => expect(result.current.history).toHaveLength(1));
+
+    let updatedAudit;
+    await act(async () => {
+      updatedAudit = await result.current.updateAuditMetadata(1, { notes: "Nota interna", tags: ["demo"] });
+    });
+
+    expect(updatedAudit.tags).toEqual(["demo"]);
+    await waitFor(() => expect(result.current.history[0].notes).toBe("Nota interna"));
+    const patchCall = fetchMock.mock.calls.find(([url, options]) => url.endsWith("/audits/1/metadata") && options.method === "PATCH");
+    expect(JSON.parse(patchCall[1].body)).toEqual({ notes: "Nota interna", tags: ["demo"] });
+  });
 });

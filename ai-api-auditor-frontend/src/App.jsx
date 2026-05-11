@@ -87,6 +87,7 @@ function App() {
     analysisTimeMs,
     analyzeOpenAPI,
     retryLastAudit,
+    updateAuditMetadata,
     exportAudit,
     exportResult,
     exportPdfReport,
@@ -179,6 +180,7 @@ function App() {
               getColor={getColor}
               getRiskLabel={getRiskLabel}
               getFriendlyEndpointName={getFriendlyEndpointName}
+              onUpdateMetadata={updateAuditMetadata}
             />
           </>
         )}

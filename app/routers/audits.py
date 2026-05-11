@@ -14,6 +14,7 @@ from app.models.user import User
 from app.services.audit_service import analyze_manual_audit
 from app.services.ai_service import OllamaAnalysisError, SPANISH_OUTPUT_INSTRUCTIONS, analyze_with_ollama
 from app.schemas.audit import (
+    AuditMetadataUpdate,
     AuditResponse,
     ManualAuditRequest,
     OpenAPIAuditRequest,
@@ -53,6 +54,29 @@ def error_detail(code: str, message: str, audit: Audit | None = None) -> dict:
     }
 
 
+def parse_tags(tags: str | None) -> list[str]:
+    if not tags:
+        return []
+
+    try:
+        parsed = json.loads(tags)
+    except json.JSONDecodeError:
+        return []
+
+    return [tag for tag in parsed if isinstance(tag, str)] if isinstance(parsed, list) else []
+
+
+def normalize_tags(tags: list[str]) -> list[str]:
+    normalized = []
+    for tag in tags:
+        clean_tag = tag.strip().lower()
+        if clean_tag and clean_tag not in normalized:
+            normalized.append(clean_tag[:40])
+        if len(normalized) >= 20:
+            break
+    return normalized
+
+
 def parse_audit(audit: Audit) -> AuditResponse:
     # Persistimos estructuras complejas como JSON en texto;
     # aquí se reconstruyen para responder con contrato tipado.
@@ -81,6 +105,8 @@ def parse_audit(audit: Audit) -> AuditResponse:
         status=normalize_audit_status(audit.status),
         error_message=audit.error_message,
         audit_mode=audit.audit_mode or "enterprise",
+        notes=audit.notes,
+        tags=parse_tags(audit.tags),
     )
 
 
@@ -126,6 +152,30 @@ def get_audit(
 
     if not audit:
         raise HTTPException(status_code=404, detail="Auditoría no encontrada.")
+
+    return parse_audit(audit)
+
+
+@router.patch("/{audit_id}/metadata", response_model=AuditResponse)
+def update_audit_metadata(
+    audit_id: int,
+    data: AuditMetadataUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    audit = (
+        db.query(Audit)
+        .filter(Audit.id == audit_id, Audit.user_id == current_user.id)
+        .first()
+    )
+
+    if not audit:
+        raise HTTPException(status_code=404, detail="Auditoría no encontrada.")
+
+    audit.notes = data.notes.strip() if data.notes and data.notes.strip() else None
+    audit.tags = json.dumps(normalize_tags(data.tags), ensure_ascii=False)
+    db.commit()
+    db.refresh(audit)
 
     return parse_audit(audit)
 

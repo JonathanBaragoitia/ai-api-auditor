@@ -1,7 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AuditDetailModal from "./AuditDetailModal";
+
+afterEach(() => {
+  cleanup();
+});
 
 const helpers = {
   translate: (text) => text,
@@ -84,5 +88,29 @@ describe("AuditDetailModal", () => {
     render(<AuditDetailModal audit={legacyAudit} onClose={vi.fn()} {...helpers} />);
 
     expect(screen.getAllByText("Enterprise").length).toBeGreaterThan(0);
+  });
+
+  it("permite editar notas internas y etiquetas", async () => {
+    const onUpdateMetadata = vi.fn(async (_auditId, metadata) => ({
+      ...audit,
+      notes: metadata.notes,
+      tags: metadata.tags,
+    }));
+
+    render(<AuditDetailModal audit={audit} onClose={vi.fn()} onUpdateMetadata={onUpdateMetadata} {...helpers} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Notas internas" }));
+    fireEvent.change(screen.getByPlaceholderText(/Añade notas internas/), {
+      target: { value: "Revisar con cliente antes de producción" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "cliente" }));
+    fireEvent.click(screen.getByRole("button", { name: "producción" }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar notas" }));
+
+    await waitFor(() => expect(onUpdateMetadata).toHaveBeenCalledWith(1, {
+      notes: "Revisar con cliente antes de producción",
+      tags: ["cliente", "producción"],
+    }));
+    expect(await screen.findByText("Notas guardadas")).toBeInTheDocument();
   });
 });

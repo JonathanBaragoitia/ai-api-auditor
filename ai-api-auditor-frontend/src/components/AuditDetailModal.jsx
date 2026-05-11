@@ -5,7 +5,8 @@ import Badge from "./Badge";
 import IssueList from "./IssueList";
 import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
 
-const tabs = ["Resumen", "Endpoints", "Problemas", "Recomendaciones", "JSON técnico"];
+const tabs = ["Resumen", "Notas internas", "Endpoints", "Problemas", "Recomendaciones", "JSON técnico"];
+const availableTags = ["producción", "crítica", "revisar", "cliente", "demo"];
 
 function AuditDetailModal({
   audit,
@@ -14,8 +15,13 @@ function AuditDetailModal({
   translate,
   getRiskLabel,
   getFriendlyEndpointName,
+  onUpdateMetadata,
+  onMetadataSaved,
 }) {
   const [activeTab, setActiveTab] = useState("Resumen");
+  const [notes, setNotes] = useState(audit?.notes || "");
+  const [tags, setTags] = useState(Array.isArray(audit?.tags) ? audit.tags : []);
+  const [saveState, setSaveState] = useState({ loading: false, message: null, error: null });
 
   if (!audit) {
     return null;
@@ -28,6 +34,28 @@ function AuditDetailModal({
   const score = normalizeDisplayScore(audit?.average_score ?? audit?.score);
   const riskLevel = audit?.global_risk_level || audit?.risk_level;
   const endpointCount = audit?.total_endpoints ?? (endpoints.length || "-");
+
+  const toggleTag = (tag) => {
+    setTags((currentTags) => (
+      currentTags.includes(tag)
+        ? currentTags.filter((item) => item !== tag)
+        : [...currentTags, tag]
+    ));
+  };
+
+  const saveMetadata = async () => {
+    if (!onUpdateMetadata || !audit?.id) return;
+    setSaveState({ loading: true, message: null, error: null });
+    try {
+      const updatedAudit = await onUpdateMetadata(audit.id, { notes, tags });
+      setNotes(updatedAudit?.notes || "");
+      setTags(Array.isArray(updatedAudit?.tags) ? updatedAudit.tags : []);
+      onMetadataSaved?.(updatedAudit);
+      setSaveState({ loading: false, message: "Notas guardadas", error: null });
+    } catch (err) {
+      setSaveState({ loading: false, message: null, error: err.message || "No se pudieron guardar las notas" });
+    }
+  };
 
   return (
     <section style={{ ...cardStyle, ...detailShellStyle }}>
@@ -84,6 +112,37 @@ function AuditDetailModal({
             <Metric label="Endpoints" value={endpointCount} />
           </div>
           <AIObservationCards item={audit} translate={translate} />
+        </div>
+      )}
+
+      {activeTab === "Notas internas" && (
+        <div style={tabPanelStyle}>
+          <h3 style={sectionTitleStyle}>Notas internas</h3>
+          <p style={mutedTextStyle}>Organiza esta auditoría con contexto privado para tu equipo.</p>
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Añade notas internas, próximos pasos o contexto del cliente..."
+            style={notesTextareaStyle}
+          />
+          <h4>Etiquetas</h4>
+          <div style={tagGridStyle}>
+            {availableTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                style={tags.includes(tag) ? selectedTagButtonStyle : tagButtonStyle}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+          <button onClick={saveMetadata} disabled={saveState.loading || !onUpdateMetadata} style={saveButtonStyle}>
+            {saveState.loading ? "Guardando..." : "Guardar notas"}
+          </button>
+          {saveState.message && <p style={successTextStyle}>{saveState.message}</p>}
+          {saveState.error && <p style={errorTextStyle}>{saveState.error}</p>}
         </div>
       )}
 
@@ -224,6 +283,64 @@ const titleStyle = {
 const mutedTextStyle = {
   color: "#94a3b8",
   margin: 0,
+};
+
+const sectionTitleStyle = {
+  margin: 0,
+};
+
+const notesTextareaStyle = {
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: 12,
+  color: "white",
+  minHeight: 130,
+  marginTop: 12,
+  padding: 12,
+  resize: "vertical",
+  width: "100%",
+};
+
+const tagGridStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+};
+
+const tagButtonStyle = {
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: 999,
+  color: "#cbd5e1",
+  cursor: "pointer",
+  padding: "8px 11px",
+};
+
+const selectedTagButtonStyle = {
+  ...tagButtonStyle,
+  background: "#312e81",
+  borderColor: "#818cf8",
+  color: "#e0e7ff",
+};
+
+const saveButtonStyle = {
+  background: "#6366f1",
+  border: "none",
+  borderRadius: 10,
+  color: "white",
+  cursor: "pointer",
+  marginTop: 16,
+  padding: "11px 14px",
+};
+
+const successTextStyle = {
+  color: "#86efac",
+  marginBottom: 0,
+};
+
+const errorTextStyle = {
+  color: "#fecaca",
+  marginBottom: 0,
 };
 
 const errorCardStyle = {

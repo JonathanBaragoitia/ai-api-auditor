@@ -42,5 +42,7 @@ class Audit(Base):
 
     status = Column(String(20), nullable=False, default="completed")
     error_message = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    tags = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))

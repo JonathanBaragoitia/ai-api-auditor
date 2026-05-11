@@ -226,6 +226,61 @@ def test_user_cannot_access_other_user_audit_detail():
     assert other_detail_response.status_code == 404
 
 
+def test_user_can_update_own_audit_notes_and_tags():
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post(
+            "/audits/manual",
+            json=manual_audit_payload("Auditoría con notas"),
+            headers=headers,
+        )
+        update_response = client.patch(
+            f"/audits/{create_response.json()['id']}/metadata",
+            json={"notes": "Revisar antes de demo", "tags": ["Producción", "crítica", "producción"]},
+            headers=headers,
+        )
+        detail_response = client.get(f"/audits/{create_response.json()['id']}", headers=headers)
+
+    assert update_response.status_code == 200
+    assert update_response.json()["notes"] == "Revisar antes de demo"
+    assert update_response.json()["tags"] == ["producción", "crítica"]
+    assert detail_response.json()["tags"] == ["producción", "crítica"]
+
+
+def test_user_cannot_update_other_user_audit_metadata():
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as client:
+        owner_headers = get_auth_headers(client, "metadata-owner@example.com")
+        other_headers = get_auth_headers(client, "metadata-other@example.com")
+        create_response = client.post(
+            "/audits/manual",
+            json=manual_audit_payload("Auditoría ajena"),
+            headers=owner_headers,
+        )
+        update_response = client.patch(
+            f"/audits/{create_response.json()['id']}/metadata",
+            json={"notes": "No debería guardar", "tags": ["cliente"]},
+            headers=other_headers,
+        )
+
+    assert update_response.status_code == 404
+
+
+def test_audit_metadata_defaults_are_compatible_with_old_audits():
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/manual", json=manual_audit_payload("Auditoría legacy"), headers=headers)
+
+    data = create_response.json()
+    assert data["notes"] is None
+    assert data["tags"] == []
+
+
 def test_openapi_audit_returns_total_endpoints(monkeypatch):
     def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
         return [

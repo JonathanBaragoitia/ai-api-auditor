@@ -109,6 +109,24 @@ export function useAudits(token, onLogout) {
     }
   };
 
+  const updateAuditMetadata = async (auditId, metadata) => {
+    const updatedAudit = await apiFetch(
+      `${API_BASE_URL}/audits/${auditId}/metadata`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(metadata),
+      },
+      token,
+      onLogout,
+    );
+
+    setHistory((currentHistory) => currentHistory.map((audit) => (
+      audit?.id === updatedAudit.id ? updatedAudit : audit
+    )));
+    setResult((currentResult) => (currentResult?.id === updatedAudit.id ? updatedAudit : currentResult));
+    return updatedAudit;
+  };
+
   const exportAudit = (format) => {
     if (!result) {
       return;
@@ -136,6 +154,7 @@ export function useAudits(token, onLogout) {
     analysisTimeMs,
     analyzeOpenAPI,
     retryLastAudit,
+    updateAuditMetadata,
     exportAudit,
     exportResult,
     exportPdfReport,
