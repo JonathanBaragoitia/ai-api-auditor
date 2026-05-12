@@ -1,11 +1,19 @@
 import Badge from "./Badge";
+import EmptyState from "./EmptyState";
 import { getRecommendationText } from "../utils/recommendations";
 
 function IssueList({ issues, translate }) {
   const normalizedIssues = Array.isArray(issues) ? issues : [];
 
   if (normalizedIssues.length === 0) {
-    return <p style={{ opacity: 0.6 }}>Sin problemas detectados</p>;
+    return (
+      <EmptyState
+        compact
+        title="Sin problemas detectados"
+        description="No hay findings para mostrar en esta sección."
+        action="Revisa los endpoints o lanza una nueva auditoría si necesitas más contexto."
+      />
+    );
   }
 
   return (

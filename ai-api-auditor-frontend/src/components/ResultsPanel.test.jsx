@@ -14,6 +14,13 @@ const helpers = {
 };
 
 describe("ResultsPanel", () => {
+  it("muestra estado vacío cuando no hay resultados", () => {
+    render(<ResultsPanel {...helpers} result={{ status: "completed" }} />);
+
+    expect(screen.getByText("Todavía no hay resultados")).toBeInTheDocument();
+    expect(screen.getByText("Pega una especificación OpenAPI y lanza tu primer análisis.")).toBeInTheDocument();
+  });
+
   it("renderiza recomendaciones objeto sin crashear", () => {
     render(
       <ResultsPanel

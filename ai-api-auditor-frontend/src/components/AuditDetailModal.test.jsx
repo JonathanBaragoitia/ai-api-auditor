@@ -85,7 +85,7 @@ describe("AuditDetailModal", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Recomendaciones" })[0]);
     expect(screen.getByText("Documentar controles de seguridad.")).toBeInTheDocument();
-    expect(screen.getByText("2 endpoints afectados")).toBeInTheDocument();
+    expect(screen.getByText("Detectado 2 veces")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "JSON técnico" })[0]);
     expect(screen.getByText(/"name": "Auditoría usuarios"/)).toBeInTheDocument();

@@ -4,6 +4,13 @@ import { describe, expect, it } from "vitest";
 import RecommendationList from "./RecommendationList";
 
 describe("RecommendationList", () => {
+  it("muestra estado vacío profesional cuando no hay recomendaciones", () => {
+    render(<RecommendationList translate={(text) => text} recommendations={[]} />);
+
+    expect(screen.getByText("Sin recomendaciones")).toBeInTheDocument();
+    expect(screen.getByText("No hay acciones recomendadas para mostrar todavía.")).toBeInTheDocument();
+  });
+
   it("muestra recomendaciones antiguas como string", () => {
     render(<RecommendationList translate={(text) => text} recommendations={["Añadir paginación."]} />);
 

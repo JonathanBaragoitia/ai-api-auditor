@@ -3,6 +3,7 @@ import { useState } from "react";
 import AIObservationCards from "./AIObservationCards";
 import AuditDetailModal from "./AuditDetailModal";
 import Badge from "./Badge";
+import EmptyState from "./EmptyState";
 import IssueList from "./IssueList";
 import RecommendationList from "./RecommendationList";
 import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
@@ -166,12 +167,17 @@ function HistoryList({
       )}
 
       {historyItems.length === 0 ? (
-        <p>Sin historial</p>
+        <EmptyState
+          title="Todavía no hay auditorías"
+          description="El historial aparecerá aquí cuando completes tu primer análisis."
+          action="Pega una especificación OpenAPI y lanza tu primer análisis."
+        />
       ) : filteredHistory.length === 0 ? (
-        <div style={emptyState}>
-          <p style={emptyIcon}>⌕</p>
-          <p>No hay auditorías que coincidan con los filtros actuales.</p>
-        </div>
+        <EmptyState
+          title="No hay auditorías con esos filtros"
+          description="La búsqueda actual no coincide con ninguna auditoría guardada."
+          action="Limpia filtros o prueba con otro endpoint, riesgo o palabra clave."
+        />
       ) : (
         filteredHistory.map((a) => {
           const issues = Array.isArray(a?.issues) ? a.issues : [];
@@ -291,21 +297,6 @@ const clearButton = {
 const counterStyle = {
   color: "#cbd5e1",
   marginTop: 12,
-};
-
-const emptyState = {
-  background: "#1e293b",
-  border: "1px solid #334155",
-  borderRadius: 12,
-  padding: 24,
-  marginTop: 16,
-  textAlign: "center",
-  color: "#cbd5e1",
-};
-
-const emptyIcon = {
-  fontSize: 34,
-  margin: 0,
 };
 
 const statusGroupStyle = {

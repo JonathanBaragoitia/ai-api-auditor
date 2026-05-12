@@ -14,7 +14,10 @@ describe("DashboardStats", () => {
     expect(screen.getByText("Dashboard ejecutivo")).toBeInTheDocument();
     expect(screen.getByText("Sin auditorías todavía")).toBeInTheDocument();
     expect(screen.getByText("Score medio")).toBeInTheDocument();
-    expect(screen.getByText("Aún no hay auditorías para mostrar.")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard sin datos todavía")).toBeInTheDocument();
+    expect(screen.getByText("Pega una especificación OpenAPI y lanza tu primer análisis.")).toBeInTheDocument();
+    expect(screen.getByText("Comparación no disponible")).toBeInTheDocument();
+    expect(screen.getByText("Necesitas al menos dos auditorías para comparar evolución.")).toBeInTheDocument();
   });
 
   it("normaliza score medio en escala 0-100", () => {
@@ -38,6 +41,7 @@ describe("DashboardStats", () => {
     expect(screen.getByText("Endpoints analizados")).toBeInTheDocument();
     expect(screen.getAllByText("Auditoría usuarios").length).toBeGreaterThan(0);
     expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("Comparación de evolución")).toBeInTheDocument();
   });
 
   it("muestra distribución de riesgos por porcentaje", () => {
@@ -90,7 +94,7 @@ describe("DashboardStats", () => {
     expect(screen.getByText("Validación")).toBeInTheDocument();
     expect(screen.getByText("Últimas auditorías")).toBeInTheDocument();
     expect(screen.getAllByText("Auditoría reciente").length).toBeGreaterThan(0);
-    expect(screen.getByText("Auditoría anterior")).toBeInTheDocument();
+    expect(screen.getAllByText("Auditoría anterior").length).toBeGreaterThan(0);
     expect(screen.getByText("Auditoría tercera")).toBeInTheDocument();
     expect(screen.queryByText("Auditoría no visible")).not.toBeInTheDocument();
   });

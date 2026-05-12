@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
 import HistoryList from "./HistoryList";
 
@@ -10,7 +10,18 @@ const helpers = {
   getFriendlyEndpointName: (path) => (path === "/users" ? "Usuarios" : path),
 };
 
+afterEach(() => {
+  cleanup();
+});
+
 describe("HistoryList", () => {
+  it("muestra estado vacío cuando no hay auditorías", () => {
+    render(<HistoryList history={[]} {...helpers} />);
+
+    expect(screen.getByText("Todavía no hay auditorías")).toBeInTheDocument();
+    expect(screen.getByText("Pega una especificación OpenAPI y lanza tu primer análisis.")).toBeInTheDocument();
+  });
+
   it("muestra auditorías y controles de filtrado", () => {
     render(
       <HistoryList
@@ -35,7 +46,7 @@ describe("HistoryList", () => {
       />,
     );
 
-    expect(screen.getByText("Historial")).toBeInTheDocument();
+    expect(screen.getAllByText("Historial").length).toBeGreaterThan(0);
     expect(screen.getByText("Auditoría usuarios")).toBeInTheDocument();
     expect(screen.getByText("Usuarios")).toBeInTheDocument();
     expect(screen.getByText("Modo: Seguridad")).toBeInTheDocument();

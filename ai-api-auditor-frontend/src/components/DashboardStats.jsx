@@ -1,4 +1,5 @@
 import Badge from "./Badge";
+import EmptyState from "./EmptyState";
 import MetricCard from "./MetricCard";
 import {
   getCategoryLabel,
@@ -110,7 +111,12 @@ function DashboardStats({ history, sectionStyle }) {
       <div style={panelStyle}>
         <h3 style={panelTitleStyle}>Últimas auditorías</h3>
         {recentAudits.length === 0 ? (
-          <p style={mutedStyle}>Aún no hay auditorías para mostrar.</p>
+          <EmptyState
+            compact
+            title="Dashboard sin datos todavía"
+            description="Aún no hay auditorías para alimentar métricas ejecutivas."
+            action="Pega una especificación OpenAPI y lanza tu primer análisis."
+          />
         ) : (
           <div style={recentGridStyle}>
             {recentAudits.map((audit, index) => (
@@ -125,6 +131,24 @@ function DashboardStats({ history, sectionStyle }) {
                 </div>
               </article>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div style={panelStyle}>
+        <h3 style={panelTitleStyle}>Comparación de evolución</h3>
+        {audits.length < 2 ? (
+          <EmptyState
+            compact
+            title="Comparación no disponible"
+            description="Necesitas al menos dos auditorías para comparar evolución."
+            action="Ejecuta otra auditoría para medir cambios de score, riesgo y problemas."
+          />
+        ) : (
+          <div style={comparisonGridStyle}>
+            <MetricCard title="Auditoría actual" value={audits[0]?.name || "Actual"} style={comparisonCardStyle} compact />
+            <MetricCard title="Auditoría previa" value={audits[1]?.name || "Previa"} style={comparisonCardStyle} compact />
+            <MetricCard title="Cambio de score" value={formatScoreDelta(audits[0], audits[1])} style={comparisonCardStyle} />
           </div>
         )}
       </div>
@@ -176,6 +200,14 @@ function getIssueCategoryCounts(audits) {
 
 function formatScore(audit) {
   return normalizeDisplayScore(audit?.average_score ?? audit?.score);
+}
+
+function formatScoreDelta(currentAudit, previousAudit) {
+  const current = formatScore(currentAudit);
+  const previous = formatScore(previousAudit);
+  if (typeof current !== "number" || typeof previous !== "number") return "-";
+  const delta = current - previous;
+  return `${delta >= 0 ? "+" : ""}${delta}`;
 }
 
 function riskSegmentColor(risk) {
@@ -327,6 +359,20 @@ const recentBadgesStyle = {
   flexWrap: "wrap",
   gap: 8,
   justifyContent: "flex-end",
+};
+
+const comparisonGridStyle = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  marginTop: 14,
+};
+
+const comparisonCardStyle = {
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: 12,
+  padding: 14,
 };
 
 export default DashboardStats;

@@ -1,5 +1,6 @@
 import AIObservationCards from "./AIObservationCards";
 import Badge from "./Badge";
+import EmptyState from "./EmptyState";
 import IssueList from "./IssueList";
 import RecommendationList from "./RecommendationList";
 import { normalizeDisplayScore } from "../utils/display";
@@ -36,7 +37,11 @@ function ResultsPanel({
       )}
 
       {!endpoints ? (
-        <p>No hay datos disponibles</p>
+        <EmptyState
+          title="Todavía no hay resultados"
+          description="Los endpoints analizados aparecerán aquí cuando completes una auditoría."
+          action="Pega una especificación OpenAPI y lanza tu primer análisis."
+        />
       ) : (
         endpoints.map((ep, i) => {
           const issues = Array.isArray(ep?.issues) ? ep.issues : [];

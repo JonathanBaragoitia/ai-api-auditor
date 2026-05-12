@@ -4,6 +4,13 @@ import { describe, expect, it } from "vitest";
 import IssueList from "./IssueList";
 
 describe("IssueList", () => {
+  it("muestra estado vacío profesional cuando no hay problemas", () => {
+    render(<IssueList translate={(text) => text} issues={[]} />);
+
+    expect(screen.getByText("Sin problemas detectados")).toBeInTheDocument();
+    expect(screen.getByText("No hay findings para mostrar en esta sección.")).toBeInTheDocument();
+  });
+
   it("muestra issue estructurado con severidad y categoría", () => {
     render(
       <IssueList

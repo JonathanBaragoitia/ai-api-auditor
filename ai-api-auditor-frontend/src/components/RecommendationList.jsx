@@ -1,3 +1,4 @@
+import EmptyState from "./EmptyState";
 import {
   getAffectedEndpoints,
   getRecommendationOccurrences,
@@ -10,7 +11,14 @@ function RecommendationList({ recommendations, translate }) {
     : [];
 
   if (safeRecommendations.length === 0) {
-    return <p style={{ opacity: 0.6 }}>Sin recomendaciones</p>;
+    return (
+      <EmptyState
+        compact
+        title="Sin recomendaciones"
+        description="No hay acciones recomendadas para mostrar todavía."
+        action="Ejecuta una auditoría o revisa endpoints con findings para generar próximos pasos."
+      />
+    );
   }
 
   return (

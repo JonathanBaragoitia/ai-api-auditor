@@ -2,8 +2,11 @@ import { useState } from "react";
 
 import AIObservationCards from "./AIObservationCards";
 import Badge from "./Badge";
+import EmptyState from "./EmptyState";
 import IssueList from "./IssueList";
+import RecommendationList from "./RecommendationList";
 import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
+import { dedupeRecommendations, getRecommendationText } from "../utils/recommendations";
 
 const tabs = ["Resumen", "Notas internas", "Endpoints", "Problemas", "Recomendaciones", "JSON técnico"];
 const availableTags = ["producción", "crítica", "revisar", "cliente", "demo"];
@@ -149,7 +152,12 @@ function AuditDetailModal({
       {activeTab === "Endpoints" && (
         <div style={tabPanelStyle}>
           {endpoints.length === 0 ? (
-            <p style={mutedTextStyle}>Esta auditoría no tiene endpoints analizados.</p>
+            <EmptyState
+              compact
+              title="Sin endpoints analizados"
+              description="Esta auditoría no tiene endpoints disponibles para revisar."
+              action="Ejecuta un análisis OpenAPI para ver detalles endpoint por endpoint."
+            />
           ) : (
             endpoints.map((endpoint, index) => (
               <details key={`${endpoint?.path}-${index}`} style={accordionStyle}>
@@ -201,47 +209,9 @@ function Metric({ label, value }) {
   );
 }
 
-function RecommendationList({ recommendations, translate }) {
-  if (recommendations.length === 0) {
-    return <p style={{ opacity: 0.6 }}>Sin recomendaciones</p>;
-  }
-
-  return (
-    <div style={recommendationListStyle}>
-      {recommendations.map((recommendation, index) => {
-        const recommendationText = recommendationToText(recommendation);
-        const affectedEndpoints = Array.isArray(recommendation?.affected_endpoints)
-          ? recommendation.affected_endpoints
-          : [];
-
-        return (
-          <div key={index} style={recommendationStyle}>
-            <p style={recommendationTextStyle}>{translate(recommendationText)}</p>
-            {Number(recommendation?.occurrences) > 1 && (
-              <p style={recommendationMetaStyle}>{recommendation.occurrences} endpoints afectados</p>
-            )}
-            {affectedEndpoints.length > 0 && (
-              <details style={recommendationDetailsStyle}>
-                <summary style={recommendationSummaryStyle}>Ver endpoints afectados</summary>
-                <div style={recommendationEndpointGridStyle}>
-                  {affectedEndpoints.map((endpoint, endpointIndex) => (
-                    <span key={`${formatEndpoint(endpoint)}-${endpointIndex}`} style={recommendationEndpointPillStyle}>
-                      {formatEndpoint(endpoint)}
-                    </span>
-                  ))}
-                </div>
-              </details>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function collectRecommendations(item) {
   const directRecommendations = Array.isArray(item?.recommendations)
-    ? item.recommendations.filter((recommendation) => recommendationToText(recommendation))
+    ? item.recommendations.filter((recommendation) => getRecommendationText(recommendation))
     : [];
   const issueRecommendations = Array.isArray(item?.issues)
     ? item.issues.map((issue) => issue?.recommendation).filter(Boolean)
@@ -259,37 +229,6 @@ function collectAllRecommendations(audit, endpoints) {
   const endpointRecommendations = endpoints.flatMap((endpoint) => collectRecommendations(endpoint));
 
   return dedupeRecommendations(endpointRecommendations);
-}
-
-function dedupeRecommendations(recommendations) {
-  const seen = new Set();
-  const unique = [];
-
-  recommendations.forEach((recommendation) => {
-    const key = recommendationToText(recommendation).toLowerCase();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    unique.push(recommendation);
-  });
-
-  return unique;
-}
-
-function recommendationToText(recommendation) {
-  if (typeof recommendation === "string") {
-    return recommendation;
-  }
-
-  if (recommendation && typeof recommendation === "object") {
-    return recommendation.title || recommendation.recommendation || recommendation.description || "";
-  }
-
-  return "";
-}
-
-function formatEndpoint(endpoint) {
-  if (typeof endpoint === "string") return endpoint;
-  return [endpoint?.method, endpoint?.path].filter(Boolean).join(" ") || "Endpoint afectado";
 }
 
 function formatDate(value) {
@@ -493,57 +432,6 @@ const summaryMetaStyle = {
   color: "#94a3b8",
   display: "inline-flex",
   gap: 8,
-};
-
-const recommendationListStyle = {
-  display: "grid",
-  gap: 10,
-};
-
-const recommendationStyle = {
-  background: "#0f172a",
-  border: "1px solid #334155",
-  borderRadius: 10,
-  padding: 12,
-  color: "#cbd5e1",
-};
-
-const recommendationTextStyle = {
-  margin: 0,
-};
-
-const recommendationMetaStyle = {
-  color: "#93c5fd",
-  fontSize: 13,
-  fontWeight: 700,
-  margin: "8px 0 0",
-};
-
-const recommendationDetailsStyle = {
-  marginTop: 10,
-};
-
-const recommendationSummaryStyle = {
-  color: "#bfdbfe",
-  cursor: "pointer",
-  fontSize: 13,
-  fontWeight: 700,
-};
-
-const recommendationEndpointGridStyle = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-  marginTop: 8,
-};
-
-const recommendationEndpointPillStyle = {
-  background: "#020617",
-  border: "1px solid #334155",
-  borderRadius: 999,
-  color: "#cbd5e1",
-  fontSize: 12,
-  padding: "5px 8px",
 };
 
 const jsonStyle = {
