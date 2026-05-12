@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -410,6 +412,117 @@ def test_openapi_audit_is_persisted_in_history(monkeypatch):
     assert detail["name"] == payload["name"]
     assert detail["audit_mode"] == "enterprise"
     assert detail["endpoints"][0]["path"] == "/users"
+
+
+def test_openapi_audit_global_risk_uses_worst_endpoint_and_aggregates_findings(monkeypatch):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
+        return [
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/users",
+                summary="Lista usuarios",
+                score=9.0,
+                risk_level="low",
+                issues=[],
+                recommendations=["Mantener paginación documentada."],
+            ),
+            OpenAPIEndpointAnalysis(
+                method="POST",
+                path="/payments",
+                summary="Crea pagos",
+                score=6.0,
+                risk_level="crítico",
+                issues=["Falta autenticación explícita en pagos."],
+                recommendations=["Añadir security scheme a /payments."],
+            ),
+        ]
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.routers.audits.analyze_openapi_schema", fake_analyze_openapi_schema)
+
+    payload = {
+        "name": "OpenAPI con riesgos mixtos",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "ok"}}}},
+                "/payments": {"post": {"responses": {"201": {"description": "created"}}}},
+            },
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/openapi", json=payload, headers=headers)
+        list_response = client.get("/audits/", headers=headers)
+        detail_response = client.get(f"/audits/{create_response.json()['id']}", headers=headers)
+
+    created = create_response.json()
+    history_item = list_response.json()[0]
+    detail = detail_response.json()
+
+    assert create_response.status_code == 200
+    assert created["global_risk_level"] == "critical"
+    assert created["issues"] == ["Falta autenticación explícita en pagos."]
+    assert created["recommendations"] == [
+        "Mantener paginación documentada.",
+        "Añadir security scheme a /payments.",
+    ]
+    assert history_item["risk_level"] == "critical"
+    assert history_item["issues"] == created["issues"]
+    assert detail["global_risk_level"] == "critical"
+    assert detail["recommendations"] == created["recommendations"]
+
+
+def test_openapi_legacy_audit_derives_global_findings_from_endpoints(monkeypatch):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
+        return [
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/orders",
+                summary="Lista pedidos",
+                score=7.0,
+                risk_level="medium",
+                issues=["Falta paginación en listado de pedidos."],
+                recommendations=["Añadir parámetros page y limit."],
+            )
+        ]
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.routers.audits.analyze_openapi_schema", fake_analyze_openapi_schema)
+
+    payload = {
+        "name": "OpenAPI legacy",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/orders": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        create_response = client.post("/audits/openapi", json=payload, headers=headers)
+        audit_id = create_response.json()["id"]
+
+        db = TestingSessionLocal()
+        try:
+            audit = db.query(Audit).filter(Audit.id == audit_id).first()
+            audit.issues = json.dumps([])
+            audit.recommendations = json.dumps([])
+            db.commit()
+        finally:
+            db.close()
+
+        list_response = client.get("/audits/", headers=headers)
+        detail_response = client.get(f"/audits/{audit_id}", headers=headers)
+
+    assert create_response.status_code == 200
+    assert list_response.json()[0]["issues"] == ["Falta paginación en listado de pedidos."]
+    assert list_response.json()[0]["recommendations"] == ["Añadir parámetros page y limit."]
+    assert detail_response.json()["issues"] == ["Falta paginación en listado de pedidos."]
+    assert detail_response.json()["recommendations"] == ["Añadir parámetros page y limit."]
 
 
 def test_openapi_audit_failed_status_is_stored_in_history():

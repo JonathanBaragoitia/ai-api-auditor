@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useAudits } from "./useAudits";
 
 describe("useAudits", () => {
-  afterEach(() => {
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -31,7 +32,7 @@ describe("useAudits", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useAudits("token", vi.fn()));
+    const { result, unmount } = renderHook(() => useAudits("token", vi.fn()));
 
     await act(async () => {
       await result.current.analyzeOpenAPI('{"openapi":"3.0.0","paths":{}}', "documentation");
@@ -41,6 +42,7 @@ describe("useAudits", () => {
 
     const postCall = fetchMock.mock.calls.find(([url, options]) => url.endsWith("/audits/openapi") && options.method === "POST");
     expect(JSON.parse(postCall[1].body).audit_mode).toBe("documentation");
+    unmount();
   });
 
   it("exporta la auditoría en formato Markdown", async () => {
@@ -79,7 +81,7 @@ describe("useAudits", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useAudits("token", vi.fn()));
+    const { result, unmount } = renderHook(() => useAudits("token", vi.fn()));
 
     await act(async () => {
       await result.current.analyzeOpenAPI('{"openapi":"3.0.0","paths":{}}', "security");
@@ -92,17 +94,21 @@ describe("useAudits", () => {
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickMock).toHaveBeenCalledTimes(1);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:auditoria");
+    unmount();
   });
 
   it("actualiza notas y etiquetas de una auditoría", async () => {
+    let audits = [{ id: 1, name: "Auditoría usuarios" }];
+
     const fetchMock = vi.fn(async (url, options = {}) => {
       if (url.endsWith("/audits/")) {
-        return new Response(JSON.stringify([{ id: 1, name: "Auditoría usuarios" }]), { status: 200 });
+        return new Response(JSON.stringify(audits), { status: 200 });
       }
 
       if (url.endsWith("/audits/1/metadata")) {
+        audits = [{ ...audits[0], ...JSON.parse(options.body) }];
         return new Response(
-          JSON.stringify({ id: 1, name: "Auditoría usuarios", notes: "Nota interna", tags: ["demo"] }),
+          JSON.stringify(audits[0]),
           { status: 200 },
         );
       }
@@ -111,7 +117,7 @@ describe("useAudits", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useAudits("token", vi.fn()));
+    const { result, unmount } = renderHook(() => useAudits("token", vi.fn()));
 
     await waitFor(() => expect(result.current.history).toHaveLength(1));
 
@@ -124,5 +130,6 @@ describe("useAudits", () => {
     await waitFor(() => expect(result.current.history[0].notes).toBe("Nota interna"));
     const patchCall = fetchMock.mock.calls.find(([url, options]) => url.endsWith("/audits/1/metadata") && options.method === "PATCH");
     expect(JSON.parse(patchCall[1].body)).toEqual({ notes: "Nota interna", tags: ["demo"] });
+    unmount();
   });
 });

@@ -25,6 +25,8 @@ from app.services.openapi_service import (
     analyze_openapi_schema,
     build_global_observations,
     calculate_global_audit_result,
+    collect_endpoint_issues,
+    collect_endpoint_recommendations,
     validate_openapi_schema,
 )
 
@@ -77,9 +79,48 @@ def normalize_tags(tags: list[str]) -> list[str]:
     return normalized
 
 
+def parse_json_list(value: str | None) -> list:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def aggregate_openapi_detail(audit: Audit) -> tuple[list, list, list | None]:
+    endpoints = parse_json_list(audit.openapi_endpoints)
+    issues = parse_json_list(audit.issues)
+    recommendations = parse_json_list(audit.recommendations)
+
+    if endpoints:
+        endpoint_issues = []
+        endpoint_recommendations = []
+        seen_recommendations = {str(recommendation) for recommendation in recommendations}
+
+        for endpoint in endpoints:
+            endpoint_issues.extend(endpoint.get("issues", []) if isinstance(endpoint, dict) else [])
+            raw_recommendations = endpoint.get("recommendations", []) if isinstance(endpoint, dict) else []
+            for recommendation in raw_recommendations:
+                key = str(recommendation)
+                if key not in seen_recommendations:
+                    seen_recommendations.add(key)
+                    endpoint_recommendations.append(recommendation)
+
+        if not issues:
+            issues = endpoint_issues
+        if not recommendations:
+            recommendations = endpoint_recommendations
+
+    return issues, recommendations, endpoints or None
+
+
 def parse_audit(audit: Audit) -> AuditResponse:
     # Persistimos estructuras complejas como JSON en texto;
     # aquí se reconstruyen para responder con contrato tipado.
+    issues, recommendations, endpoints = aggregate_openapi_detail(audit)
+
     return AuditResponse(
         id=audit.id,
         name=audit.name,
@@ -91,8 +132,8 @@ def parse_audit(audit: Audit) -> AuditResponse:
         response_example=json.loads(audit.response_example) if audit.response_example else None,
         score=audit.score,
         risk_level=audit.risk_level,
-        issues=json.loads(audit.issues),
-        recommendations=json.loads(audit.recommendations),
+        issues=issues,
+        recommendations=recommendations,
         summary=audit.summary,
         technical_observation=audit.technical_observation,
         security_observation=audit.security_observation,
@@ -101,7 +142,7 @@ def parse_audit(audit: Audit) -> AuditResponse:
         total_endpoints=audit.total_endpoints,
         average_score=audit.average_score,
         global_risk_level=audit.global_risk_level,
-        endpoints=json.loads(audit.openapi_endpoints) if audit.openapi_endpoints else None,
+        endpoints=endpoints,
         status=normalize_audit_status(audit.status),
         error_message=audit.error_message,
         audit_mode=audit.audit_mode or "enterprise",
@@ -397,6 +438,8 @@ def create_openapi_audit(
 
     average_score, global_risk_level = calculate_global_audit_result(endpoint_results)
     observations = build_global_observations(endpoint_results)
+    global_issues = collect_endpoint_issues(endpoint_results)
+    global_recommendations = collect_endpoint_recommendations(endpoint_results)
 
     endpoints_data = [endpoint.model_dump() for endpoint in endpoint_results]
     audit.score = average_score
@@ -408,6 +451,8 @@ def create_openapi_audit(
     audit.total_endpoints = len(endpoint_results)
     audit.average_score = average_score
     audit.global_risk_level = global_risk_level
+    audit.issues = json.dumps(jsonable_encoder(global_issues))
+    audit.recommendations = json.dumps(jsonable_encoder(global_recommendations))
     audit.openapi_endpoints = json.dumps(endpoints_data)
     audit.status = "completed"
     audit.error_message = None
@@ -441,6 +486,8 @@ def create_openapi_audit(
         security_observation=observations["security_observation"],
         maintainability_observation=observations["maintainability_observation"],
         endpoints=endpoint_results,
+        issues=global_issues,
+        recommendations=global_recommendations,
         status=audit.status,
         error_message=audit.error_message,
         audit_mode=audit.audit_mode,

@@ -15,10 +15,9 @@ from app.services.ai_service import (
     normalize_issues,
     normalize_recommendations,
 )
-from app.utils.scoring import calculate_risk_level
-
 logger = logging.getLogger(__name__)
 VALID_REST_METHODS = {"get", "post", "put", "patch", "delete"}
+RISK_PRIORITY = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 AUDIT_MODE_INSTRUCTIONS = {
     "security": (
         "Enfoca la auditoría en seguridad: autenticación, autorización, exposición de datos, "
@@ -237,9 +236,49 @@ def calculate_global_audit_result(results: list[OpenAPIEndpointAnalysis]) -> tup
         1,
     )
 
-    global_risk_level = calculate_risk_level(average_score)
+    global_risk_level = get_worst_risk_level(results)
 
     return average_score, global_risk_level
+
+
+def get_worst_risk_level(results: list[OpenAPIEndpointAnalysis]) -> str:
+    worst = "low"
+    for endpoint in results:
+        risk = normalize_risk_token(endpoint.risk_level)
+        if RISK_PRIORITY[risk] > RISK_PRIORITY[worst]:
+            worst = risk
+    return worst
+
+
+def normalize_risk_token(value: str | None) -> str:
+    risk = str(value or "").strip().lower()
+    if risk in {"critical", "crítico", "critico", "crítica", "critica"}:
+        return "critical"
+    if risk in {"high", "alto", "alta"}:
+        return "high"
+    if risk in {"medium", "medio", "media"}:
+        return "medium"
+    return "low"
+
+
+def collect_endpoint_issues(results: list[OpenAPIEndpointAnalysis]) -> list:
+    issues = []
+    for endpoint in results:
+        for issue in endpoint.issues or []:
+            issues.append(issue)
+    return issues
+
+
+def collect_endpoint_recommendations(results: list[OpenAPIEndpointAnalysis]) -> list:
+    recommendations = []
+    seen = set()
+    for endpoint in results:
+        for recommendation in endpoint.recommendations or []:
+            key = str(recommendation)
+            if key not in seen:
+                seen.add(key)
+                recommendations.append(recommendation)
+    return recommendations
 
 
 def build_global_observations(results: list[OpenAPIEndpointAnalysis]) -> dict[str, str]:
@@ -251,13 +290,16 @@ def build_global_observations(results: list[OpenAPIEndpointAnalysis]) -> dict[st
             "maintainability_observation": DEFAULT_MAINTAINABILITY_OBSERVATION,
         }
 
-    high_risk_count = sum(1 for endpoint in results if endpoint.risk_level == "high")
-    medium_risk_count = sum(1 for endpoint in results if endpoint.risk_level == "medium")
+    critical_risk_count = sum(1 for endpoint in results if normalize_risk_token(endpoint.risk_level) == "critical")
+    high_risk_count = sum(1 for endpoint in results if normalize_risk_token(endpoint.risk_level) == "high")
+    medium_risk_count = sum(1 for endpoint in results if normalize_risk_token(endpoint.risk_level) == "medium")
+    issue_count = len(collect_endpoint_issues(results))
 
     return {
         "summary": (
             f"Se analizaron {len(results)} endpoints. La auditoría identifica "
-            f"{high_risk_count} endpoints de riesgo alto y {medium_risk_count} de riesgo medio."
+            f"{critical_risk_count} críticos, {high_risk_count} altos, {medium_risk_count} medios "
+            f"y {issue_count} problemas concretos."
         ),
         "technical_observation": (
             "La calidad técnica global debe evaluarse por consistencia REST, claridad del contrato, "

@@ -104,6 +104,8 @@ class OpenAPIAuditResponse(BaseModel):
     security_observation: str | None = None
     maintainability_observation: str | None = None
     endpoints: list[OpenAPIEndpointAnalysis]
+    issues: list[str | StructuredIssue] = Field(default_factory=list)
+    recommendations: list[str | dict[str, Any]] = Field(default_factory=list)
     status: AuditStatus = "completed"
     error_message: str | None = None
     audit_mode: AuditMode = "enterprise"
