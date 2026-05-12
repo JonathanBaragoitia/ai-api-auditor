@@ -78,10 +78,7 @@ describe("IssueList", () => {
             evidence: "Falta autenticación detectado en 2 endpoints.",
             recommendation: "Añadir JWT u OAuth2.",
             occurrences: 2,
-            affected_endpoints: [
-              { method: "GET", path: "/users", risk_level: "high" },
-              { method: "POST", path: "/orders", risk_level: "high" },
-            ],
+            affected_endpoints: ["GET /users", "POST /orders"],
           },
         ]}
       />,
@@ -89,7 +86,7 @@ describe("IssueList", () => {
 
     expect(screen.getByText("2 endpoints afectados")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Ver endpoints afectados"));
-    expect(screen.getByText("/users")).toBeInTheDocument();
-    expect(screen.getByText("/orders")).toBeInTheDocument();
+    expect(screen.getByText("GET /users")).toBeInTheDocument();
+    expect(screen.getByText("POST /orders")).toBeInTheDocument();
   });
 });

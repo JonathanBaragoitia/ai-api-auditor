@@ -466,9 +466,7 @@ def test_openapi_audit_global_risk_uses_worst_endpoint_and_aggregates_findings(m
     assert created["global_risk_level"] == "critical"
     assert created["issues"][0]["title"] == "Falta autenticación explícita en pagos."
     assert created["issues"][0]["occurrences"] == 1
-    assert created["issues"][0]["affected_endpoints"] == [
-        {"method": "POST", "path": "/payments", "risk_level": "critical"}
-    ]
+    assert created["issues"][0]["affected_endpoints"] == ["POST /payments"]
     assert [recommendation["recommendation"] for recommendation in created["recommendations"]] == [
         "Mantener paginación documentada.",
         "Añadir esquema de seguridad a /payments.",
@@ -524,9 +522,7 @@ def test_openapi_legacy_audit_derives_global_findings_from_endpoints(monkeypatch
 
     assert create_response.status_code == 200
     assert list_response.json()[0]["issues"][0]["title"] == "Falta paginación en listado de pedidos."
-    assert list_response.json()[0]["issues"][0]["affected_endpoints"] == [
-        {"method": "GET", "path": "/orders", "risk_level": "medium"}
-    ]
+    assert list_response.json()[0]["issues"][0]["affected_endpoints"] == ["GET /orders"]
     assert list_response.json()[0]["recommendations"][0]["recommendation"] == "Añadir parámetros page y limit."
     assert detail_response.json()["issues"][0]["title"] == "Falta paginación en listado de pedidos."
     assert detail_response.json()["recommendations"][0]["recommendation"] == "Añadir parámetros page y limit."
@@ -604,16 +600,63 @@ def test_openapi_audit_deduplicates_similar_findings_and_keeps_unique_ones(monke
     assert len(issues) == 2
     assert issues[0]["title"] == "Falta autenticación"
     assert issues[0]["occurrences"] == 2
-    assert issues[0]["affected_endpoints"] == [
-        {"method": "GET", "path": "/users", "risk_level": "high"},
-        {"method": "GET", "path": "/orders", "risk_level": "high"},
-    ]
+    assert issues[0]["affected_endpoints"] == ["GET /users", "GET /orders"]
     assert issues[1]["title"] == "Falta paginación"
     assert [recommendation["recommendation"] for recommendation in recommendations] == [
         "Añadir autenticación JWT.",
         "Añadir paginación con page y limit.",
     ]
     assert recommendations[0]["occurrences"] == 2
+
+
+def test_openapi_audit_normalizes_spanish_severity_and_simple_english_terms(monkeypatch):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
+        return [
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/admin",
+                summary="Panel admin",
+                score=4.0,
+                risk_level="crítica",
+                issues=[
+                    {
+                        "title": "Missing authentication controls",
+                        "severity": "alta",
+                        "category": "security",
+                        "evidence": "Endpoint without access controls.",
+                        "recommendation": "Add authentication controls.",
+                    }
+                ],
+                recommendations=["Add authentication controls."],
+            )
+        ]
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.routers.audits.analyze_openapi_schema", fake_analyze_openapi_schema)
+
+    payload = {
+        "name": "OpenAPI normalizada",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {"/admin": {"get": {"responses": {"200": {"description": "ok"}}}}},
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    issue = response.json()["issues"][0]
+    recommendation = response.json()["recommendations"][0]
+
+    assert response.status_code == 200
+    assert response.json()["global_risk_level"] == "critical"
+    assert issue["severity"] == "high"
+    assert issue["title"] == "faltan controles de autenticación"
+    assert issue["evidence"] == "Endpoint sin controles de acceso."
+    assert issue["recommendation"] == "añadir controles de autenticación."
+    assert recommendation["recommendation"] == "añadir controles de autenticación."
 
 
 def test_openapi_audit_failed_status_is_stored_in_history():

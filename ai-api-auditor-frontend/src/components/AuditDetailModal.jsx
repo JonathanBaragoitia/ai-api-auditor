@@ -225,8 +225,8 @@ function RecommendationList({ recommendations, translate }) {
                 <summary style={recommendationSummaryStyle}>Ver endpoints afectados</summary>
                 <div style={recommendationEndpointGridStyle}>
                   {affectedEndpoints.map((endpoint, endpointIndex) => (
-                    <span key={`${endpoint?.method}-${endpoint?.path}-${endpointIndex}`} style={recommendationEndpointPillStyle}>
-                      <b>{endpoint?.method}</b> {endpoint?.path}
+                    <span key={`${formatEndpoint(endpoint)}-${endpointIndex}`} style={recommendationEndpointPillStyle}>
+                      {formatEndpoint(endpoint)}
                     </span>
                   ))}
                 </div>
@@ -285,6 +285,11 @@ function recommendationToText(recommendation) {
   }
 
   return "";
+}
+
+function formatEndpoint(endpoint) {
+  if (typeof endpoint === "string") return endpoint;
+  return [endpoint?.method, endpoint?.path].filter(Boolean).join(" ") || "Endpoint afectado";
 }
 
 function formatDate(value) {

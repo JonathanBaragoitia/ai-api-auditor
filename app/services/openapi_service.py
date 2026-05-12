@@ -272,12 +272,10 @@ def endpoint_value(endpoint: OpenAPIEndpointAnalysis | dict, key: str, default=N
     return getattr(endpoint, key, default)
 
 
-def endpoint_reference(endpoint: OpenAPIEndpointAnalysis | dict) -> dict[str, object]:
-    return {
-        "method": endpoint_value(endpoint, "method", "UNKNOWN"),
-        "path": endpoint_value(endpoint, "path", "unknown"),
-        "risk_level": normalize_risk_token(endpoint_value(endpoint, "risk_level")),
-    }
+def endpoint_reference(endpoint: OpenAPIEndpointAnalysis | dict) -> str:
+    method = endpoint_value(endpoint, "method", "UNKNOWN")
+    path = endpoint_value(endpoint, "path", "unknown")
+    return f"{method} {path}"
 
 
 def normalize_issue_object(issue: object) -> dict[str, object]:
@@ -329,10 +327,9 @@ def are_issues_similar(first: dict[str, object], second: dict[str, object]) -> b
     return same_risk_type and (similar_title or similar_recommendation)
 
 
-def merge_endpoint_reference(target: dict[str, object], endpoint: dict[str, object]) -> None:
+def merge_endpoint_reference(target: dict[str, object], endpoint: str) -> None:
     affected = target.setdefault("affected_endpoints", [])
-    key = (endpoint.get("method"), endpoint.get("path"))
-    if key not in {(item.get("method"), item.get("path")) for item in affected if isinstance(item, dict)}:
+    if endpoint not in affected:
         affected.append(endpoint)
     target["occurrences"] = len(affected)
 

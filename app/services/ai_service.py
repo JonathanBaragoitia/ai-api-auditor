@@ -83,10 +83,15 @@ def normalize_plain_text(value: object) -> str:
     # Limpia saltos y espacios repetidos para que el frontend/exportaciones reciban texto compacto.
     text = re.sub(r"\s+", " ", str(value or "")).strip()
     replacements = {
+        "missing authentication controls": "faltan controles de autenticación",
+        "add authentication controls": "añadir controles de autenticación",
+        "without access controls": "sin controles de acceso",
         "missing authentication": "falta autenticación",
         "authentication missing": "falta autenticación",
         "missing pagination": "falta paginación",
         "add pagination": "añadir paginación",
+        "access controls": "controles de acceso",
+        "controls": "controles",
         "rate limit": "rate limiting",
         "error handling": "manejo de errores",
         "sensitive data": "datos sensibles",
@@ -245,11 +250,8 @@ def build_structured_issue(
     fix_suggestion: object | None = None,
 ) -> dict[str, object]:
     normalized_title = trim_text(normalize_text(title, "Problema detectado"), TEXT_LIMITS["issue_title"])
-    normalized_severity = str(severity or "medium").lower()
+    normalized_severity = normalize_severity(severity)
     normalized_category = str(category or "maintainability").lower()
-
-    if normalized_severity not in ALLOWED_SEVERITIES:
-        normalized_severity = "medium"
 
     if normalized_category not in ALLOWED_CATEGORIES:
         normalized_category = "maintainability"
@@ -272,6 +274,19 @@ def build_structured_issue(
             normalized_severity,
         ),
     }
+
+
+def normalize_severity(value: object) -> str:
+    severity = normalize_plain_text(value).lower()
+    if severity in {"critical", "crítico", "critico", "crítica", "critica"}:
+        return "critical"
+    if severity in {"high", "alto", "alta"}:
+        return "high"
+    if severity in {"medium", "medio", "media"}:
+        return "medium"
+    if severity in {"low", "bajo", "baja"}:
+        return "low"
+    return "medium"
 
 
 def normalize_fix_priority(value: object, severity: str) -> str:

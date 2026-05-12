@@ -16,7 +16,7 @@ class StructuredIssue(BaseModel):
     recommendation: str
     fix_suggestion: dict[str, Any] | None = None
     occurrences: int | None = None
-    affected_endpoints: list[dict[str, Any]] | None = None
+    affected_endpoints: list[str | dict[str, Any]] | None = None
 
 
 class ManualAuditRequest(BaseModel):

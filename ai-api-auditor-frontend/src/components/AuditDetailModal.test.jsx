@@ -43,10 +43,7 @@ const audit = {
     {
       recommendation: "Documentar controles de seguridad.",
       occurrences: 2,
-      affected_endpoints: [
-        { method: "GET", path: "/users", risk_level: "high" },
-        { method: "POST", path: "/orders", risk_level: "medium" },
-      ],
+      affected_endpoints: ["GET /users", "POST /orders"],
     },
   ],
   endpoints: [

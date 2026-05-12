@@ -36,8 +36,8 @@ function IssueList({ issues, translate }) {
                   <summary style={endpointSummaryStyle}>Ver endpoints afectados</summary>
                   <div style={endpointGridStyle}>
                     {issue.affected_endpoints.map((endpoint, endpointIndex) => (
-                      <span key={`${endpoint?.method}-${endpoint?.path}-${endpointIndex}`} style={endpointPillStyle}>
-                        <b>{endpoint?.method}</b> {endpoint?.path}
+                      <span key={`${formatEndpoint(endpoint)}-${endpointIndex}`} style={endpointPillStyle}>
+                        {formatEndpoint(endpoint)}
                       </span>
                     ))}
                   </div>
@@ -88,6 +88,11 @@ function CodeExample({ title, value }) {
 function formatCodeValue(value) {
   if (typeof value === "string") return value;
   return JSON.stringify(value, null, 2);
+}
+
+function formatEndpoint(endpoint) {
+  if (typeof endpoint === "string") return endpoint;
+  return [endpoint?.method, endpoint?.path].filter(Boolean).join(" ") || "Endpoint afectado";
 }
 
 const listStyle = {
