@@ -73,4 +73,35 @@ describe("HistoryList", () => {
     expect(screen.getByText("Completada")).toBeInTheDocument();
     expect(screen.getByText("Modo: Enterprise")).toBeInTheDocument();
   });
+
+  it("renderiza recomendaciones objeto sin crashear", () => {
+    render(
+      <HistoryList
+        history={[
+          {
+            id: 3,
+            name: "Auditoría con recomendaciones consolidadas",
+            path: "/users",
+            method: "OPENAPI",
+            score: 7,
+            risk_level: "medium",
+            issues: [],
+            recommendations: [
+              {
+                recommendation: "Añadir controles de autenticación.",
+                occurrences: 2,
+                affected_endpoints: ["GET /users", "POST /orders"],
+              },
+            ],
+            status: "completed",
+            created_at: "2026-05-07T00:00:00",
+          },
+        ]}
+        {...helpers}
+      />,
+    );
+
+    expect(screen.getByText("Añadir controles de autenticación.")).toBeInTheDocument();
+    expect(screen.getByText("Detectado 2 veces")).toBeInTheDocument();
+  });
 });

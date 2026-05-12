@@ -1,6 +1,7 @@
 import AIObservationCards from "./AIObservationCards";
 import Badge from "./Badge";
 import IssueList from "./IssueList";
+import RecommendationList from "./RecommendationList";
 import { normalizeDisplayScore } from "../utils/display";
 
 function ResultsPanel({
@@ -57,15 +58,7 @@ function ResultsPanel({
               <IssueList issues={issues} translate={translate} />
 
               <h4>Recomendaciones</h4>
-              {recommendations.length > 0 ? (
-                <ul>
-                  {recommendations.map((x, j) => (
-                    <li key={j}>{translate(x)}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ opacity: 0.6 }}>Sin recomendaciones</p>
-              )}
+              <RecommendationList recommendations={recommendations} translate={translate} />
             </div>
           );
         })

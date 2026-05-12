@@ -4,7 +4,9 @@ import AIObservationCards from "./AIObservationCards";
 import AuditDetailModal from "./AuditDetailModal";
 import Badge from "./Badge";
 import IssueList from "./IssueList";
+import RecommendationList from "./RecommendationList";
 import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
+import { getRecommendationText } from "../utils/recommendations";
 
 const issueToSearchText = (issue) => {
   if (typeof issue === "string") {
@@ -64,7 +66,7 @@ function HistoryList({
               endpoint?.security_observation,
               endpoint?.maintainability_observation,
               ...(Array.isArray(endpoint?.issues) ? endpoint.issues.map(issueToSearchText) : []),
-              ...(Array.isArray(endpoint?.recommendations) ? endpoint.recommendations : []),
+              ...(Array.isArray(endpoint?.recommendations) ? endpoint.recommendations.map(getRecommendationText) : []),
             ].filter(Boolean).join(" "))
             .join(" ")
         : "";
@@ -80,7 +82,7 @@ function HistoryList({
         audit?.security_observation,
         audit?.maintainability_observation,
         ...(Array.isArray(audit?.issues) ? audit.issues.map(issueToSearchText) : []),
-        ...(Array.isArray(audit?.recommendations) ? audit.recommendations : []),
+        ...(Array.isArray(audit?.recommendations) ? audit.recommendations.map(getRecommendationText) : []),
         endpointText,
       ]
         .filter(Boolean)
@@ -203,15 +205,7 @@ function HistoryList({
               <IssueList issues={issues} translate={translate} />
 
               <h4>Recomendaciones</h4>
-              {recommendations.length > 0 ? (
-                <ul>
-                  {recommendations.map((x, i) => (
-                    <li key={i}>{translate(x)}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ opacity: 0.6 }}>Sin recomendaciones</p>
-              )}
+              <RecommendationList recommendations={recommendations} translate={translate} />
             </div>
           );
         })

@@ -1,4 +1,5 @@
 import Badge from "./Badge";
+import { getRecommendationText } from "../utils/recommendations";
 
 function IssueList({ issues, translate }) {
   const normalizedIssues = Array.isArray(issues) ? issues : [];
@@ -44,8 +45,8 @@ function IssueList({ issues, translate }) {
                 </details>
               )}
 
-              {issue?.recommendation && (
-                <p style={textStyle}><b>Recomendación:</b> {translate(issue.recommendation)}</p>
+              {getRecommendationText(issue?.recommendation) && (
+                <p style={textStyle}><b>Recomendación:</b> {translate(getRecommendationText(issue.recommendation))}</p>
               )}
 
               {issue?.fix_suggestion && (
