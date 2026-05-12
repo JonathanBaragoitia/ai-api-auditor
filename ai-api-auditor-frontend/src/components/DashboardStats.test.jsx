@@ -11,10 +11,10 @@ describe("DashboardStats", () => {
   it("no rompe con historial vacío", () => {
     render(<DashboardStats history={[]} sectionStyle={{}} />);
 
-    expect(screen.getByText("Dashboard ejecutivo")).toBeInTheDocument();
+    expect(screen.getByText("Panel ejecutivo")).toBeInTheDocument();
     expect(screen.getByText("Sin auditorías todavía")).toBeInTheDocument();
-    expect(screen.getByText("Score medio")).toBeInTheDocument();
-    expect(screen.getByText("Dashboard sin datos todavía")).toBeInTheDocument();
+    expect(screen.getByText("Puntuación media")).toBeInTheDocument();
+    expect(screen.getByText("Panel sin datos todavía")).toBeInTheDocument();
     expect(screen.getByText("Pega una especificación OpenAPI y lanza tu primer análisis.")).toBeInTheDocument();
     expect(screen.getByText("Comparación no disponible")).toBeInTheDocument();
     expect(screen.getByText("Necesitas al menos dos auditorías para comparar evolución.")).toBeInTheDocument();
@@ -42,6 +42,91 @@ describe("DashboardStats", () => {
     expect(screen.getAllByText("Auditoría usuarios").length).toBeGreaterThan(0);
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Comparación de evolución")).toBeInTheDocument();
+  });
+
+  it("formatea cambios de puntuación sin flotantes largos", () => {
+    render(
+      <DashboardStats
+        history={[
+          { id: 1, name: "Auditoría actual", average_score: 88.8, risk_level: "low", status: "completed" },
+          { id: 2, name: "Auditoría previa", average_score: 80, risk_level: "medium", status: "completed" },
+        ]}
+        sectionStyle={{}}
+      />,
+    );
+
+    expect(screen.getByText("Cambio de puntuación")).toBeInTheDocument();
+    expect(screen.getByText("Cambio de riesgo")).toBeInTheDocument();
+    expect(screen.getByText("+8.8")).toBeInTheDocument();
+    expect(screen.getByText("Medio -> Bajo")).toBeInTheDocument();
+    expect(screen.queryByText(/8\.799999/)).not.toBeInTheDocument();
+  });
+
+  it("muestra comparación profesional de issues y endpoints", () => {
+    render(
+      <DashboardStats
+        history={[
+          {
+            id: 1,
+            name: "Auditoría actual",
+            average_score: 80,
+            global_risk_level: "medium",
+            status: "completed",
+            issues: [
+              { title: "Falta autenticación", severity: "high", category: "security" },
+              { title: "Falta paginación", severity: "medium", category: "performance" },
+            ],
+            recommendations: [{ recommendation: "Añadir paginación." }],
+            endpoints: [
+              { method: "GET", path: "/users", score: 8, risk_level: "low" },
+              { method: "POST", path: "/orders", score: 4, risk_level: "high" },
+            ],
+          },
+          {
+            id: 2,
+            name: "Auditoría previa",
+            average_score: 70,
+            global_risk_level: "high",
+            status: "completed",
+            issues: [
+              { title: "Falta autenticación", severity: "high", category: "security" },
+              { title: "Documentación incompleta", severity: "medium", category: "documentation" },
+            ],
+            recommendations: [{ recommendation: "Añadir autenticación." }],
+            endpoints: [
+              { method: "GET", path: "/users", score: 6, risk_level: "medium" },
+              { method: "POST", path: "/orders", score: 7, risk_level: "medium" },
+            ],
+          },
+        ]}
+        sectionStyle={{}}
+      />,
+    );
+
+    expect(screen.getAllByText("Problemas nuevos").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Problemas solucionados").length).toBeGreaterThan(0);
+    expect(screen.getByText("Falta paginación")).toBeInTheDocument();
+    expect(screen.getByText("Documentación incompleta")).toBeInTheDocument();
+    expect(screen.getByText(/GET \/users: \+20 puntos/)).toBeInTheDocument();
+    expect(screen.getByText(/POST \/orders: -30 puntos/)).toBeInTheDocument();
+    expect(screen.getAllByText("+1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("-1").length).toBeGreaterThan(0);
+  });
+
+  it("normaliza nombres legacy en tarjetas y comparación", () => {
+    render(
+      <DashboardStats
+        history={[
+          { id: 1, name: "Frontend Audit", average_score: 80, risk_level: "low", status: "completed" },
+          { id: 2, name: "OpenAPI Audit", average_score: 70, risk_level: "medium", status: "completed" },
+        ]}
+        sectionStyle={{}}
+      />,
+    );
+
+    expect(screen.getAllByText("Auditoría Frontend").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auditoría OpenAPI").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Frontend Audit")).not.toBeInTheDocument();
   });
 
   it("muestra distribución de riesgos por porcentaje", () => {
@@ -89,7 +174,7 @@ describe("DashboardStats", () => {
       />,
     );
 
-    expect(screen.getByText("Top problemas detectados")).toBeInTheDocument();
+    expect(screen.getByText("Principales problemas detectados")).toBeInTheDocument();
     expect(screen.getByText("Seguridad")).toBeInTheDocument();
     expect(screen.getByText("Validación")).toBeInTheDocument();
     expect(screen.getByText("Últimas auditorías")).toBeInTheDocument();

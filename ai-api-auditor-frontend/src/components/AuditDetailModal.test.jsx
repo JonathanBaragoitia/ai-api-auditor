@@ -100,6 +100,13 @@ describe("AuditDetailModal", () => {
     expect(screen.getAllByText("Enterprise").length).toBeGreaterThan(0);
   });
 
+  it("normaliza nombre legacy en cabecera y resumen", () => {
+    render(<AuditDetailModal audit={{ ...audit, name: "Frontend Audit" }} onClose={vi.fn()} {...helpers} />);
+
+    expect(screen.getAllByText("Auditoría Frontend").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Frontend Audit")).not.toBeInTheDocument();
+  });
+
   it("permite editar notas internas y etiquetas", async () => {
     const onUpdateMetadata = vi.fn(async (_auditId, metadata) => ({
       ...audit,

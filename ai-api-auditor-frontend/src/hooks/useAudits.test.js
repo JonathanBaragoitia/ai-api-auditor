@@ -19,7 +19,7 @@ describe("useAudits", () => {
       return new Response(
         JSON.stringify({
           id: 1,
-          name: "Frontend Audit",
+          name: "Auditoría Frontend",
           total_endpoints: 1,
           average_score: 80,
           global_risk_level: "low",
@@ -42,6 +42,7 @@ describe("useAudits", () => {
 
     const postCall = fetchMock.mock.calls.find(([url, options]) => url.endsWith("/audits/openapi") && options.method === "POST");
     expect(JSON.parse(postCall[1].body).audit_mode).toBe("documentation");
+    expect(JSON.parse(postCall[1].body).name).toBe("Auditoría Frontend");
     unmount();
   });
 

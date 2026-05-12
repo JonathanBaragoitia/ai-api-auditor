@@ -54,18 +54,18 @@ describe("buildAuditReportHtml", () => {
     expect(html).toContain("JSON técnico");
   });
 
-  it("genera informes Markdown y TXT con score, riesgo e issues", () => {
+  it("genera informes Markdown y TXT con puntuación, riesgo e issues", () => {
     const markdown = buildAuditReportMarkdown(audit);
     const text = buildAuditReportText(audit);
 
     expect(markdown).toContain("# Informe de auditoría API: Auditoría usuarios");
-    expect(markdown).toContain("**Score global:** 84/100");
+    expect(markdown).toContain("**Puntuación global:** 84/100");
     expect(markdown).toContain("**Riesgo global:** Alto");
     expect(markdown).toContain("Falta autenticación");
     expect(markdown).toContain("Modo de auditoría:** Seguridad");
 
     expect(text).toContain("INFORME DE AUDITORIA API: Auditoría usuarios");
-    expect(text).toContain("Score global: 84/100");
+    expect(text).toContain("Puntuacion global: 84/100");
     expect(text).toContain("Riesgo global: Alto");
     expect(text).toContain("Falta autenticación");
     expect(text).toContain("Modo de auditoria: Seguridad");

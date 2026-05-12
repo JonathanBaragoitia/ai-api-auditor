@@ -64,7 +64,7 @@ export function useAudits(token, onLogout) {
         {
           method: "POST",
           body: JSON.stringify({
-            name: "Frontend Audit",
+            name: "Auditoría Frontend",
             openapi_schema: parsed,
             audit_mode: auditMode,
           }),
@@ -87,7 +87,7 @@ export function useAudits(token, onLogout) {
       setError(message);
       setResult({
         id: backendError?.audit_id,
-        name: "Frontend Audit",
+        name: "Auditoría Frontend",
         status: backendError?.status || "failed",
         error_message: message,
         audit_mode: auditMode,

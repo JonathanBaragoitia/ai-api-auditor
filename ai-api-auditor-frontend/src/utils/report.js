@@ -1,4 +1,11 @@
-import { getAuditModeLabel, getCategoryLabel, getRiskLabel, getSeverityLabel, normalizeDisplayScore } from "./display";
+import {
+  getAuditModeLabel,
+  getCategoryLabel,
+  getRiskLabel,
+  getSeverityLabel,
+  formatScoreValue,
+  normalizeAuditName,
+} from "./display";
 
 export function buildAuditExport(audit, format) {
   if (format === "json") {
@@ -46,7 +53,7 @@ export function buildAuditReportMarkdown(audit) {
     "",
     `- **Fecha de auditoría:** ${data.auditDate}`,
     `- **Modo de auditoría:** ${data.auditMode}`,
-    `- **Score global:** ${data.score}/100`,
+    `- **Puntuación global:** ${data.score}/100`,
     `- **Riesgo global:** ${data.risk}`,
     `- **Estado:** ${data.status}`,
     `- **Endpoints analizados:** ${data.endpointCount}`,
@@ -62,7 +69,7 @@ export function buildAuditReportMarkdown(audit) {
     "",
     "## Endpoints",
     data.endpoints.length > 0
-      ? data.endpoints.map((endpoint) => `- **${endpoint.method || "-"} ${endpoint.path || "-"}** - Score ${normalizeDisplayScore(endpoint.score)}/100 - Riesgo ${getRiskLabel(endpoint.risk_level)}${endpoint.summary ? ` - ${endpoint.summary}` : ""}`).join("\n")
+      ? data.endpoints.map((endpoint) => `- **${endpoint.method || "-"} ${endpoint.path || "-"}** - Puntuación ${formatScoreValue(endpoint.score)}/100 - Riesgo ${getRiskLabel(endpoint.risk_level)}${endpoint.summary ? ` - ${endpoint.summary}` : ""}`).join("\n")
       : "No hay endpoints analizados.",
     "",
     "## Problemas detectados",
@@ -82,7 +89,7 @@ export function buildAuditReportText(audit) {
     "",
     `Fecha de auditoria: ${data.auditDate}`,
     `Modo de auditoria: ${data.auditMode}`,
-    `Score global: ${data.score}/100`,
+    `Puntuacion global: ${data.score}/100`,
     `Riesgo global: ${data.risk}`,
     `Estado: ${data.status}`,
     `Endpoints analizados: ${data.endpointCount}`,
@@ -95,7 +102,7 @@ export function buildAuditReportText(audit) {
     "",
     "ENDPOINTS",
     data.endpoints.length > 0
-      ? data.endpoints.map((endpoint) => `- ${endpoint.method || "-"} ${endpoint.path || "-"} | Score ${normalizeDisplayScore(endpoint.score)}/100 | Riesgo ${getRiskLabel(endpoint.risk_level)}${endpoint.summary ? ` | ${endpoint.summary}` : ""}`).join("\n")
+      ? data.endpoints.map((endpoint) => `- ${endpoint.method || "-"} ${endpoint.path || "-"} | Puntuacion ${formatScoreValue(endpoint.score)}/100 | Riesgo ${getRiskLabel(endpoint.risk_level)}${endpoint.summary ? ` | ${endpoint.summary}` : ""}`).join("\n")
       : "No hay endpoints analizados.",
     "",
     "PROBLEMAS DETECTADOS",
@@ -115,7 +122,7 @@ export function buildAuditReportHtml(audit) {
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Informe de auditoría - ${escapeHtml(audit?.name || "API")}</title>
+  <title>Informe de auditoría - ${escapeHtml(normalizeAuditName(audit?.name || "API"))}</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f8fafc; color: #0f172a; font-family: Arial, sans-serif; line-height: 1.5; }
@@ -149,7 +156,7 @@ export function buildAuditReportHtml(audit) {
       <h1>${escapeHtml(data.name)}</h1>
       <p>Generado el ${escapeHtml(generatedAt)}</p>
       <div class="grid">
-        <div class="metric"><span class="label">Score global</span><span class="value">${escapeHtml(data.score)}/100</span></div>
+        <div class="metric"><span class="label">Puntuación global</span><span class="value">${escapeHtml(data.score)}/100</span></div>
         <div class="metric"><span class="label">Nivel de riesgo</span><span class="risk">${escapeHtml(data.risk)}</span></div>
         <div class="metric"><span class="label">Endpoints analizados</span><span class="value">${escapeHtml(data.endpointCount)}</span></div>
         <div class="metric"><span class="label">Estado</span><span class="value">${escapeHtml(data.status)}</span></div>
@@ -195,8 +202,8 @@ function getReportData(audit) {
   const issues = collectIssues(audit, endpoints);
 
   return {
-    name: audit?.name || "Auditoría sin nombre",
-    score: normalizeDisplayScore(audit?.average_score ?? audit?.score),
+    name: normalizeAuditName(audit?.name),
+    score: formatScoreValue(audit?.average_score ?? audit?.score),
     risk: getRiskLabel(audit?.global_risk_level || audit?.risk_level),
     status: audit?.status || "completed",
     auditMode: getAuditModeLabel(audit?.audit_mode),
@@ -253,8 +260,8 @@ function endpointTable(endpoints) {
     return "<p>No hay endpoints analizados.</p>";
   }
 
-  return `<table><thead><tr><th>Método</th><th>Path</th><th>Score</th><th>Riesgo</th><th>Resumen</th></tr></thead><tbody>${endpoints
-    .map((endpoint) => `<tr><td>${escapeHtml(endpoint?.method || "-")}</td><td>${escapeHtml(endpoint?.path || "-")}</td><td>${escapeHtml(normalizeDisplayScore(endpoint?.score))}/100</td><td>${escapeHtml(getRiskLabel(endpoint?.risk_level))}</td><td>${escapeHtml(endpoint?.summary || "-")}</td></tr>`)
+  return `<table><thead><tr><th>Método</th><th>Ruta</th><th>Puntuación</th><th>Riesgo</th><th>Resumen</th></tr></thead><tbody>${endpoints
+    .map((endpoint) => `<tr><td>${escapeHtml(endpoint?.method || "-")}</td><td>${escapeHtml(endpoint?.path || "-")}</td><td>${escapeHtml(formatScoreValue(endpoint?.score))}/100</td><td>${escapeHtml(getRiskLabel(endpoint?.risk_level))}</td><td>${escapeHtml(endpoint?.summary || "-")}</td></tr>`)
     .join("")}</tbody></table>`;
 }
 

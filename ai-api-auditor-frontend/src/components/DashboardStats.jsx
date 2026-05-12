@@ -1,8 +1,13 @@
 import Badge from "./Badge";
 import EmptyState from "./EmptyState";
 import MetricCard from "./MetricCard";
+import { compareAudits } from "../utils/auditComparison";
 import {
   getCategoryLabel,
+  formatCompactNumber,
+  formatPercentage,
+  formatScoreValue,
+  normalizeAuditName,
   normalizeCategory,
   normalizeDisplayScore,
   normalizeRisk,
@@ -32,16 +37,17 @@ function DashboardStats({ history, sectionStyle }) {
   }, 0);
   const mostFrequentRisk = getMostFrequentRisk(audits);
   const latestAudit = audits[0];
-  const latestAuditLabel = latestAudit?.name || "Sin auditorías todavía";
+  const latestAuditLabel = latestAudit ? normalizeAuditName(latestAudit.name) : "Sin auditorías todavía";
   const topIssues = getIssueCategoryCounts(audits);
   const recentAudits = audits.slice(0, 3);
+  const auditComparison = audits.length >= 2 ? compareAudits(audits[0], audits[1]) : null;
 
   return (
     <section>
-      <h2 style={sectionStyle}>Dashboard ejecutivo</h2>
+      <h2 style={sectionStyle}>Panel ejecutivo</h2>
       <div style={dashboardGridStyle}>
         <MetricCard title="Auditorías" value={total} style={metricCardStyle} />
-        <MetricCard title="Score medio" value={averageScore === "-" ? "-" : `${averageScore}/100`} style={metricCardStyle} />
+        <MetricCard title="Puntuación media" value={averageScore === "-" ? "-" : `${formatCompactNumber(averageScore)}/100`} style={metricCardStyle} />
         <MetricCard title="Endpoints analizados" value={totalEndpoints} style={metricCardStyle} />
         <MetricCard title="Última auditoría" value={latestAuditLabel} style={metricCardStyle} compact />
       </div>
@@ -62,7 +68,7 @@ function DashboardStats({ history, sectionStyle }) {
               return (
                 <div
                   key={risk}
-                  title={`${risk}: ${percentage}%`}
+                  title={`${risk}: ${formatPercentage(percentage)}`}
                   style={{ ...stackSegmentStyle, ...riskSegmentColor(risk), width: `${percentage}%` }}
                 />
               );
@@ -79,7 +85,7 @@ function DashboardStats({ history, sectionStyle }) {
                   <div style={barTrackStyle}>
                     <div style={{ ...barFillStyle, ...riskSegmentColor(risk), width: `${percentage}%` }} />
                   </div>
-                  <span style={percentageStyle}>{percentage}%</span>
+                  <span style={percentageStyle}>{formatPercentage(percentage)}</span>
                 </div>
               );
             })}
@@ -87,7 +93,7 @@ function DashboardStats({ history, sectionStyle }) {
         </div>
 
         <div style={panelStyle}>
-          <h3 style={panelTitleStyle}>Top problemas detectados</h3>
+          <h3 style={panelTitleStyle}>Principales problemas detectados</h3>
           <p style={mutedStyle}>Issues agrupados por categoría</p>
           <div style={riskRowsStyle}>
             {issueCategories.map((category) => {
@@ -113,7 +119,7 @@ function DashboardStats({ history, sectionStyle }) {
         {recentAudits.length === 0 ? (
           <EmptyState
             compact
-            title="Dashboard sin datos todavía"
+            title="Panel sin datos todavía"
             description="Aún no hay auditorías para alimentar métricas ejecutivas."
             action="Pega una especificación OpenAPI y lanza tu primer análisis."
           />
@@ -122,8 +128,8 @@ function DashboardStats({ history, sectionStyle }) {
             {recentAudits.map((audit, index) => (
               <article key={audit?.id || audit?.name || index} style={recentCardStyle}>
                 <div>
-                  <h4 style={recentTitleStyle}>{audit?.name || "Auditoría sin nombre"}</h4>
-                  <p style={mutedStyle}>Score {formatScore(audit)}/100</p>
+                  <h4 style={recentTitleStyle}>{normalizeAuditName(audit?.name)}</h4>
+                  <p style={mutedStyle}>Puntuación {formatScore(audit)}/100</p>
                 </div>
                 <div style={recentBadgesStyle}>
                   <Badge type="risk" value={audit?.global_risk_level || audit?.risk_level} />
@@ -142,14 +148,43 @@ function DashboardStats({ history, sectionStyle }) {
             compact
             title="Comparación no disponible"
             description="Necesitas al menos dos auditorías para comparar evolución."
-            action="Ejecuta otra auditoría para medir cambios de score, riesgo y problemas."
+            action="Ejecuta otra auditoría para medir cambios de puntuación, riesgo y problemas."
           />
         ) : (
-          <div style={comparisonGridStyle}>
-            <MetricCard title="Auditoría actual" value={audits[0]?.name || "Actual"} style={comparisonCardStyle} compact />
-            <MetricCard title="Auditoría previa" value={audits[1]?.name || "Previa"} style={comparisonCardStyle} compact />
-            <MetricCard title="Cambio de score" value={formatScoreDelta(audits[0], audits[1])} style={comparisonCardStyle} />
-          </div>
+          <>
+            <div style={comparisonGridStyle}>
+              <MetricCard title="Auditoría actual" value={normalizeAuditName(audits[0]?.name || "Actual")} style={comparisonCardStyle} compact />
+              <MetricCard title="Auditoría previa" value={normalizeAuditName(audits[1]?.name || "Previa")} style={comparisonCardStyle} compact />
+              <MetricCard title="Cambio de puntuación" value={auditComparison.formattedScoreDelta} style={comparisonCardStyle} />
+              <MetricCard title="Cambio de riesgo" value={auditComparison.riskChangeLabel} style={comparisonCardStyle} compact />
+              <MetricCard title="Problemas nuevos" value={`+${auditComparison.issues.newItems.length}`} style={comparisonCardStyle} />
+              <MetricCard title="Problemas solucionados" value={`-${auditComparison.issues.resolvedItems.length}`} style={comparisonCardStyle} />
+              <MetricCard title="Recomendaciones nuevas" value={`+${auditComparison.recommendations.newItems.length}`} style={comparisonCardStyle} />
+              <MetricCard title="Recomendaciones resueltas" value={`-${auditComparison.recommendations.resolvedItems.length}`} style={comparisonCardStyle} />
+            </div>
+            <div style={comparisonDetailGridStyle}>
+              <ComparisonList
+                title="Problemas nuevos"
+                emptyText="No se detectaron problemas nuevos."
+                items={auditComparison.issues.newItems}
+              />
+              <ComparisonList
+                title="Problemas solucionados"
+                emptyText="No se detectaron problemas solucionados."
+                items={auditComparison.issues.resolvedItems}
+              />
+              <ComparisonList
+                title="Endpoints mejorados"
+                emptyText="No hay endpoints mejorados frente a la auditoría previa."
+                items={auditComparison.endpoints.improved.map(formatEndpointChange)}
+              />
+              <ComparisonList
+                title="Endpoints empeorados"
+                emptyText="No hay endpoints empeorados frente a la auditoría previa."
+                items={auditComparison.endpoints.worsened.map(formatEndpointChange)}
+              />
+            </div>
+          </>
         )}
       </div>
     </section>
@@ -199,15 +234,29 @@ function getIssueCategoryCounts(audits) {
 }
 
 function formatScore(audit) {
-  return normalizeDisplayScore(audit?.average_score ?? audit?.score);
+  return formatScoreValue(audit?.average_score ?? audit?.score);
 }
 
-function formatScoreDelta(currentAudit, previousAudit) {
-  const current = formatScore(currentAudit);
-  const previous = formatScore(previousAudit);
-  if (typeof current !== "number" || typeof previous !== "number") return "-";
-  const delta = current - previous;
-  return `${delta >= 0 ? "+" : ""}${delta}`;
+function ComparisonList({ title, items, emptyText }) {
+  return (
+    <article style={comparisonListStyle}>
+      <div style={comparisonListHeaderStyle}>
+        <h4 style={recentTitleStyle}>{title}</h4>
+        <strong>{items.length}</strong>
+      </div>
+      {items.length > 0 ? (
+        <ul style={comparisonItemsStyle}>
+          {items.slice(0, 4).map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
+        </ul>
+      ) : (
+        <p style={mutedStyle}>{emptyText}</p>
+      )}
+    </article>
+  );
+}
+
+function formatEndpointChange(endpoint) {
+  return `${endpoint.label}: ${endpoint.formattedScoreDelta} puntos, riesgo ${endpoint.riskChangeLabel}`;
 }
 
 function riskSegmentColor(risk) {
@@ -368,11 +417,41 @@ const comparisonGridStyle = {
   marginTop: 14,
 };
 
+const comparisonDetailGridStyle = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  marginTop: 14,
+};
+
 const comparisonCardStyle = {
   background: "#0f172a",
   border: "1px solid #334155",
   borderRadius: 12,
   padding: 14,
+};
+
+const comparisonListStyle = {
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: 12,
+  padding: 14,
+};
+
+const comparisonListHeaderStyle = {
+  alignItems: "center",
+  color: "#e2e8f0",
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 10,
+};
+
+const comparisonItemsStyle = {
+  color: "#cbd5e1",
+  display: "grid",
+  gap: 6,
+  margin: "10px 0 0",
+  paddingLeft: 18,
 };
 
 export default DashboardStats;

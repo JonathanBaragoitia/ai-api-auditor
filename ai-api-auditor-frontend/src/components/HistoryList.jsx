@@ -6,7 +6,7 @@ import Badge from "./Badge";
 import EmptyState from "./EmptyState";
 import IssueList from "./IssueList";
 import RecommendationList from "./RecommendationList";
-import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
+import { formatScoreValue, getAuditModeLabel, normalizeAuditName } from "../utils/display";
 import { getRecommendationText } from "../utils/recommendations";
 
 const issueToSearchText = (issue) => {
@@ -72,7 +72,7 @@ function HistoryList({
             .join(" ")
         : "";
       const searchableText = [
-        audit?.name,
+        normalizeAuditName(audit?.name),
         audit?.path,
         getFriendlyEndpointName(audit?.path),
         audit?.method,
@@ -186,7 +186,7 @@ function HistoryList({
           return (
             <div key={a?.id} style={cardStyle}>
               <div style={rowStyle}>
-                <h3>{translate(a?.name)}</h3>
+                <h3>{translate(normalizeAuditName(a?.name))}</h3>
                 <div style={statusGroupStyle}>
                   <Badge type="status" value={a?.status} />
                   <span style={{ color: getColor(a?.risk_level) }}>{getRiskLabel(a?.risk_level)}</span>
@@ -200,7 +200,7 @@ function HistoryList({
                   {a.tags.map((tag) => <span key={tag} style={tagStyle}>{tag}</span>)}
                 </div>
               )}
-              <p>Puntuación: {normalizeDisplayScore(a?.score)}/100</p>
+              <p>Puntuación: {formatScoreValue(a?.score)}/100</p>
               {a?.error_message && <p style={errorStyle}>{translate(a.error_message)}</p>}
 
               <AIObservationCards item={a} translate={translate} compact />

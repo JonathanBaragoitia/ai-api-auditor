@@ -3,7 +3,7 @@ import Badge from "./Badge";
 import EmptyState from "./EmptyState";
 import IssueList from "./IssueList";
 import RecommendationList from "./RecommendationList";
-import { normalizeDisplayScore } from "../utils/display";
+import { formatCompactNumber, formatScoreValue } from "../utils/display";
 
 function ResultsPanel({
   result,
@@ -26,7 +26,7 @@ function ResultsPanel({
       </div>
 
       {typeof result?.analysis_time_ms === "number" && (
-        <p style={mutedTextStyle}>Tiempo de análisis: {(result.analysis_time_ms / 1000).toFixed(1)} s</p>
+        <p style={mutedTextStyle}>Tiempo de análisis: {formatCompactNumber(result.analysis_time_ms / 1000)} s</p>
       )}
 
       {isFailed && (
@@ -55,7 +55,7 @@ function ResultsPanel({
               </div>
 
               <p><b>Resumen:</b> {translate(ep?.summary)}</p>
-              <p><b>Puntuación:</b> {normalizeDisplayScore(ep?.score)}/100</p>
+              <p><b>Puntuación:</b> {formatScoreValue(ep?.score)}/100</p>
 
               <AIObservationCards item={ep} translate={translate} />
 

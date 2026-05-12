@@ -6,7 +6,49 @@ export function normalizeDisplayScore(score) {
   }
 
   const normalized = numericScore <= 10 ? numericScore * 10 : numericScore;
-  return Math.round(normalized * 10) / 10;
+  return roundToOneDecimal(normalized);
+}
+
+export function roundToOneDecimal(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return Math.round((numericValue + Number.EPSILON) * 10) / 10;
+}
+
+export function formatCompactNumber(value) {
+  const rounded = roundToOneDecimal(value);
+  if (rounded === null) return "-";
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+export function formatSignedNumber(value) {
+  const formatted = formatCompactNumber(value);
+  if (formatted === "-") return formatted;
+  return Number(value) >= 0 ? `+${formatted}` : formatted;
+}
+
+export function formatScoreValue(score) {
+  const normalized = normalizeDisplayScore(score);
+  if (normalized === "-") return "-";
+  return formatCompactNumber(normalized);
+}
+
+export function formatPercentage(value) {
+  return `${formatCompactNumber(value)}%`;
+}
+
+export function normalizeAuditName(name) {
+  const rawName = String(name || "").trim();
+  if (!rawName) return "Auditoría sin nombre";
+
+  const normalizedNames = {
+    "frontend audit": "Auditoría Frontend",
+    "frontend api audit": "Auditoría Frontend",
+    "api audit": "Auditoría API",
+    "openapi audit": "Auditoría OpenAPI",
+  };
+
+  return normalizedNames[rawName.toLowerCase()] || rawName;
 }
 
 export function normalizeToken(value) {

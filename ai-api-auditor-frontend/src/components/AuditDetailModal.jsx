@@ -5,7 +5,7 @@ import Badge from "./Badge";
 import EmptyState from "./EmptyState";
 import IssueList from "./IssueList";
 import RecommendationList from "./RecommendationList";
-import { getAuditModeLabel, normalizeDisplayScore } from "../utils/display";
+import { formatScoreValue, getAuditModeLabel, normalizeAuditName } from "../utils/display";
 import { dedupeRecommendations, getRecommendationText } from "../utils/recommendations";
 
 const tabs = ["Resumen", "Notas internas", "Endpoints", "Problemas", "Recomendaciones", "JSON técnico"];
@@ -34,7 +34,7 @@ function AuditDetailModal({
   const endpoints = Array.isArray(audit?.endpoints) ? audit.endpoints : [];
   const recommendations = collectAllRecommendations(audit, endpoints);
   const auditType = audit?.method === "OPENAPI" ? "Auditoría OpenAPI" : "Auditoría manual";
-  const score = normalizeDisplayScore(audit?.average_score ?? audit?.score);
+  const score = formatScoreValue(audit?.average_score ?? audit?.score);
   const riskLevel = audit?.global_risk_level || audit?.risk_level;
   const endpointCount = audit?.total_endpoints ?? (endpoints.length || "-");
 
@@ -65,7 +65,7 @@ function AuditDetailModal({
       <div style={headerStyle}>
         <div>
           <p style={eyebrowStyle}>{auditType}</p>
-          <h2 style={titleStyle}>{translate(audit?.name)}</h2>
+          <h2 style={titleStyle}>{translate(normalizeAuditName(audit?.name))}</h2>
           {audit?.created_at && <p style={mutedTextStyle}>Fecha: {formatDate(audit.created_at)}</p>}
         </div>
 
@@ -108,10 +108,10 @@ function AuditDetailModal({
             </div>
           )}
           <div style={metaGridStyle}>
-            <Metric label="Auditoría" value={translate(audit?.name)} />
+            <Metric label="Auditoría" value={translate(normalizeAuditName(audit?.name))} />
             <Metric label="Tipo" value={auditType} />
             <Metric label="Modo" value={getAuditModeLabel(audit?.audit_mode)} />
-            <Metric label="Score normalizado" value={`${score}/100`} />
+            <Metric label="Puntuación normalizada" value={`${score}/100`} />
             <Metric label="Endpoints" value={endpointCount} />
           </div>
           <AIObservationCards item={audit} translate={translate} />
@@ -164,11 +164,11 @@ function AuditDetailModal({
                 <summary style={summaryStyle}>
                   <span><b>{endpoint?.method}</b> {getFriendlyEndpointName(endpoint?.path)}</span>
                   <span style={summaryMetaStyle}>
-                    Score {normalizeDisplayScore(endpoint?.score)}/100 · <Badge type="risk" value={endpoint?.risk_level} />
+                    Puntuación {formatScoreValue(endpoint?.score)}/100 · <Badge type="risk" value={endpoint?.risk_level} />
                   </span>
                 </summary>
 
-                <p style={mutedTextStyle}><b>Path:</b> {endpoint?.path}</p>
+                <p style={mutedTextStyle}><b>Ruta:</b> {endpoint?.path}</p>
                 {endpoint?.summary && <p style={mutedTextStyle}><b>Resumen:</b> {translate(endpoint.summary)}</p>}
                 <AIObservationCards item={endpoint} translate={translate} compact />
                 <h4>Problemas</h4>

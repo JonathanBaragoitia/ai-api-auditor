@@ -1,9 +1,9 @@
 import MetricCard from "./MetricCard";
-import { normalizeDisplayScore } from "../utils/display";
+import { formatScoreValue } from "../utils/display";
 
 function SummaryCards({ result, getRiskLabel, getColor, statsStyle, miniCardStyle }) {
   const totalEndpoints = typeof result?.total_endpoints === "number" ? result.total_endpoints : "-";
-  const averageScore = normalizeDisplayScore(result?.average_score);
+  const averageScore = formatScoreValue(result?.average_score);
   const globalRiskLevel = result?.global_risk_level ?? "-";
 
   return (

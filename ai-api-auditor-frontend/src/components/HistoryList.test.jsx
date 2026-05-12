@@ -115,4 +115,42 @@ describe("HistoryList", () => {
     expect(screen.getByText("Añadir controles de autenticación.")).toBeInTheDocument();
     expect(screen.getByText("Detectado 2 veces")).toBeInTheDocument();
   });
+
+  it("normaliza nombres legacy sin modificar nombres personalizados", () => {
+    render(
+      <HistoryList
+        history={[
+          {
+            id: 4,
+            name: "Frontend Audit",
+            path: "/users",
+            method: "OPENAPI",
+            score: 8,
+            risk_level: "low",
+            issues: [],
+            recommendations: [],
+            status: "completed",
+            created_at: "2026-05-07T00:00:00",
+          },
+          {
+            id: 5,
+            name: "Auditoría personalizada cliente A",
+            path: "/orders",
+            method: "OPENAPI",
+            score: 7,
+            risk_level: "medium",
+            issues: [],
+            recommendations: [],
+            status: "completed",
+            created_at: "2026-05-06T00:00:00",
+          },
+        ]}
+        {...helpers}
+      />,
+    );
+
+    expect(screen.getByText("Auditoría Frontend")).toBeInTheDocument();
+    expect(screen.getByText("Auditoría personalizada cliente A")).toBeInTheDocument();
+    expect(screen.queryByText("Frontend Audit")).not.toBeInTheDocument();
+  });
 });
