@@ -27,6 +27,23 @@ function IssueList({ issues, translate }) {
                 <p style={textStyle}><b>Evidencia:</b> {translate(issue.evidence)}</p>
               )}
 
+              {Number(issue?.occurrences) > 1 && (
+                <p style={compactMetaStyle}>{issue.occurrences} endpoints afectados</p>
+              )}
+
+              {Array.isArray(issue?.affected_endpoints) && issue.affected_endpoints.length > 0 && (
+                <details style={endpointDetailsStyle}>
+                  <summary style={endpointSummaryStyle}>Ver endpoints afectados</summary>
+                  <div style={endpointGridStyle}>
+                    {issue.affected_endpoints.map((endpoint, endpointIndex) => (
+                      <span key={`${endpoint?.method}-${endpoint?.path}-${endpointIndex}`} style={endpointPillStyle}>
+                        <b>{endpoint?.method}</b> {endpoint?.path}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              )}
+
               {issue?.recommendation && (
                 <p style={textStyle}><b>Recomendación:</b> {translate(issue.recommendation)}</p>
               )}
@@ -102,6 +119,40 @@ const textStyle = {
   margin: "8px 0 0",
   color: "#cbd5e1",
   lineHeight: 1.45,
+};
+
+const compactMetaStyle = {
+  color: "#93c5fd",
+  fontSize: 13,
+  fontWeight: 700,
+  margin: "8px 0 0",
+};
+
+const endpointDetailsStyle = {
+  marginTop: 10,
+};
+
+const endpointSummaryStyle = {
+  color: "#bfdbfe",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const endpointGridStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+  marginTop: 8,
+};
+
+const endpointPillStyle = {
+  background: "#020617",
+  border: "1px solid #334155",
+  borderRadius: 999,
+  color: "#cbd5e1",
+  fontSize: 12,
+  padding: "5px 8px",
 };
 
 const legacyTextStyle = {

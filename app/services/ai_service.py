@@ -81,7 +81,20 @@ def fallback_analysis(issue: str, recommendation: str) -> dict:
 
 def normalize_plain_text(value: object) -> str:
     # Limpia saltos y espacios repetidos para que el frontend/exportaciones reciban texto compacto.
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    replacements = {
+        "missing authentication": "falta autenticación",
+        "authentication missing": "falta autenticación",
+        "missing pagination": "falta paginación",
+        "add pagination": "añadir paginación",
+        "rate limit": "rate limiting",
+        "error handling": "manejo de errores",
+        "sensitive data": "datos sensibles",
+        "security scheme": "esquema de seguridad",
+    }
+    for source, target in replacements.items():
+        text = re.sub(source, target, text, flags=re.IGNORECASE)
+    return text
 
 
 def trim_text(value: object, max_chars: int) -> str:
@@ -381,7 +394,7 @@ def normalize_recommendations(recommendations: object) -> list[object]:
 
 def recommendation_to_text(value: object) -> str:
     if isinstance(value, str):
-        return value
+        return normalize_plain_text(value)
 
     if isinstance(value, dict):
         return normalize_plain_text(

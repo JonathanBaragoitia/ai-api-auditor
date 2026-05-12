@@ -95,23 +95,10 @@ def aggregate_openapi_detail(audit: Audit) -> tuple[list, list, list | None]:
     recommendations = parse_json_list(audit.recommendations)
 
     if endpoints:
-        endpoint_issues = []
-        endpoint_recommendations = []
-        seen_recommendations = {str(recommendation) for recommendation in recommendations}
-
-        for endpoint in endpoints:
-            endpoint_issues.extend(endpoint.get("issues", []) if isinstance(endpoint, dict) else [])
-            raw_recommendations = endpoint.get("recommendations", []) if isinstance(endpoint, dict) else []
-            for recommendation in raw_recommendations:
-                key = str(recommendation)
-                if key not in seen_recommendations:
-                    seen_recommendations.add(key)
-                    endpoint_recommendations.append(recommendation)
-
         if not issues:
-            issues = endpoint_issues
+            issues = collect_endpoint_issues(endpoints)
         if not recommendations:
-            recommendations = endpoint_recommendations
+            recommendations = collect_endpoint_recommendations(endpoints)
 
     return issues, recommendations, endpoints or None
 

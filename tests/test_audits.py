@@ -464,10 +464,14 @@ def test_openapi_audit_global_risk_uses_worst_endpoint_and_aggregates_findings(m
 
     assert create_response.status_code == 200
     assert created["global_risk_level"] == "critical"
-    assert created["issues"] == ["Falta autenticación explícita en pagos."]
-    assert created["recommendations"] == [
+    assert created["issues"][0]["title"] == "Falta autenticación explícita en pagos."
+    assert created["issues"][0]["occurrences"] == 1
+    assert created["issues"][0]["affected_endpoints"] == [
+        {"method": "POST", "path": "/payments", "risk_level": "critical"}
+    ]
+    assert [recommendation["recommendation"] for recommendation in created["recommendations"]] == [
         "Mantener paginación documentada.",
-        "Añadir security scheme a /payments.",
+        "Añadir esquema de seguridad a /payments.",
     ]
     assert history_item["risk_level"] == "critical"
     assert history_item["issues"] == created["issues"]
@@ -519,10 +523,97 @@ def test_openapi_legacy_audit_derives_global_findings_from_endpoints(monkeypatch
         detail_response = client.get(f"/audits/{audit_id}", headers=headers)
 
     assert create_response.status_code == 200
-    assert list_response.json()[0]["issues"] == ["Falta paginación en listado de pedidos."]
-    assert list_response.json()[0]["recommendations"] == ["Añadir parámetros page y limit."]
-    assert detail_response.json()["issues"] == ["Falta paginación en listado de pedidos."]
-    assert detail_response.json()["recommendations"] == ["Añadir parámetros page y limit."]
+    assert list_response.json()[0]["issues"][0]["title"] == "Falta paginación en listado de pedidos."
+    assert list_response.json()[0]["issues"][0]["affected_endpoints"] == [
+        {"method": "GET", "path": "/orders", "risk_level": "medium"}
+    ]
+    assert list_response.json()[0]["recommendations"][0]["recommendation"] == "Añadir parámetros page y limit."
+    assert detail_response.json()["issues"][0]["title"] == "Falta paginación en listado de pedidos."
+    assert detail_response.json()["recommendations"][0]["recommendation"] == "Añadir parámetros page y limit."
+
+
+def test_openapi_audit_deduplicates_similar_findings_and_keeps_unique_ones(monkeypatch):
+    def fake_analyze_openapi_schema(_openapi_schema, endpoints=None, audit_mode="enterprise"):
+        return [
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/users",
+                summary="Lista usuarios",
+                score=5.0,
+                risk_level="high",
+                issues=[
+                    {
+                        "title": "Falta autenticación",
+                        "severity": "high",
+                        "category": "security",
+                        "evidence": "GET /users no declara autenticación.",
+                        "recommendation": "Añadir autenticación JWT.",
+                    }
+                ],
+                recommendations=["Añadir autenticación JWT."],
+            ),
+            OpenAPIEndpointAnalysis(
+                method="GET",
+                path="/orders",
+                summary="Lista pedidos",
+                score=5.5,
+                risk_level="high",
+                issues=[
+                    {
+                        "title": "Autenticación faltante",
+                        "severity": "high",
+                        "category": "security",
+                        "evidence": "GET /orders no declara security.",
+                        "recommendation": "Añadir autenticación JWT.",
+                    },
+                    {
+                        "title": "Falta paginación",
+                        "severity": "medium",
+                        "category": "performance",
+                        "evidence": "GET /orders lista recursos sin page ni limit.",
+                        "recommendation": "Añadir paginación con page y limit.",
+                    },
+                ],
+                recommendations=["Añadir autenticación JWT.", "Añadir paginación con page y limit."],
+            ),
+        ]
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.routers.audits.analyze_openapi_schema", fake_analyze_openapi_schema)
+
+    payload = {
+        "name": "OpenAPI deduplicada",
+        "openapi_schema": {
+            "openapi": "3.0.0",
+            "info": {"title": "Demo API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "ok"}}}},
+                "/orders": {"get": {"responses": {"200": {"description": "ok"}}}},
+            },
+        },
+    }
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        response = client.post("/audits/openapi", json=payload, headers=headers)
+
+    issues = response.json()["issues"]
+    recommendations = response.json()["recommendations"]
+
+    assert response.status_code == 200
+    assert len(issues) == 2
+    assert issues[0]["title"] == "Falta autenticación"
+    assert issues[0]["occurrences"] == 2
+    assert issues[0]["affected_endpoints"] == [
+        {"method": "GET", "path": "/users", "risk_level": "high"},
+        {"method": "GET", "path": "/orders", "risk_level": "high"},
+    ]
+    assert issues[1]["title"] == "Falta paginación"
+    assert [recommendation["recommendation"] for recommendation in recommendations] == [
+        "Añadir autenticación JWT.",
+        "Añadir paginación con page y limit.",
+    ]
+    assert recommendations[0]["occurrences"] == 2
 
 
 def test_openapi_audit_failed_status_is_stored_in_history():

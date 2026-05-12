@@ -208,29 +208,71 @@ function RecommendationList({ recommendations, translate }) {
 
   return (
     <div style={recommendationListStyle}>
-      {recommendations.map((recommendation, index) => (
-        <div key={index} style={recommendationStyle}>{translate(recommendation)}</div>
-      ))}
+      {recommendations.map((recommendation, index) => {
+        const recommendationText = recommendationToText(recommendation);
+        const affectedEndpoints = Array.isArray(recommendation?.affected_endpoints)
+          ? recommendation.affected_endpoints
+          : [];
+
+        return (
+          <div key={index} style={recommendationStyle}>
+            <p style={recommendationTextStyle}>{translate(recommendationText)}</p>
+            {Number(recommendation?.occurrences) > 1 && (
+              <p style={recommendationMetaStyle}>{recommendation.occurrences} endpoints afectados</p>
+            )}
+            {affectedEndpoints.length > 0 && (
+              <details style={recommendationDetailsStyle}>
+                <summary style={recommendationSummaryStyle}>Ver endpoints afectados</summary>
+                <div style={recommendationEndpointGridStyle}>
+                  {affectedEndpoints.map((endpoint, endpointIndex) => (
+                    <span key={`${endpoint?.method}-${endpoint?.path}-${endpointIndex}`} style={recommendationEndpointPillStyle}>
+                      <b>{endpoint?.method}</b> {endpoint?.path}
+                    </span>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 function collectRecommendations(item) {
   const directRecommendations = Array.isArray(item?.recommendations)
-    ? item.recommendations.map(recommendationToText).filter(Boolean)
+    ? item.recommendations.filter((recommendation) => recommendationToText(recommendation))
     : [];
   const issueRecommendations = Array.isArray(item?.issues)
     ? item.issues.map((issue) => issue?.recommendation).filter(Boolean)
     : [];
 
-  return [...new Set([...directRecommendations, ...issueRecommendations])];
+  return dedupeRecommendations([...directRecommendations, ...issueRecommendations]);
 }
 
 function collectAllRecommendations(audit, endpoints) {
   const auditRecommendations = collectRecommendations(audit);
+  if (auditRecommendations.length > 0) {
+    return auditRecommendations;
+  }
+
   const endpointRecommendations = endpoints.flatMap((endpoint) => collectRecommendations(endpoint));
 
-  return [...new Set([...auditRecommendations, ...endpointRecommendations])];
+  return dedupeRecommendations(endpointRecommendations);
+}
+
+function dedupeRecommendations(recommendations) {
+  const seen = new Set();
+  const unique = [];
+
+  recommendations.forEach((recommendation) => {
+    const key = recommendationToText(recommendation).toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    unique.push(recommendation);
+  });
+
+  return unique;
 }
 
 function recommendationToText(recommendation) {
@@ -459,6 +501,44 @@ const recommendationStyle = {
   borderRadius: 10,
   padding: 12,
   color: "#cbd5e1",
+};
+
+const recommendationTextStyle = {
+  margin: 0,
+};
+
+const recommendationMetaStyle = {
+  color: "#93c5fd",
+  fontSize: 13,
+  fontWeight: 700,
+  margin: "8px 0 0",
+};
+
+const recommendationDetailsStyle = {
+  marginTop: 10,
+};
+
+const recommendationSummaryStyle = {
+  color: "#bfdbfe",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const recommendationEndpointGridStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+  marginTop: 8,
+};
+
+const recommendationEndpointPillStyle = {
+  background: "#020617",
+  border: "1px solid #334155",
+  borderRadius: 999,
+  color: "#cbd5e1",
+  fontSize: 12,
+  padding: "5px 8px",
 };
 
 const jsonStyle = {

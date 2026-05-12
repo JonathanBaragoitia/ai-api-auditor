@@ -10,10 +10,15 @@ from app.services.ai_service import (
     DEFAULT_TECHNICAL_OBSERVATION,
     SPANISH_OUTPUT_INSTRUCTIONS,
     OllamaAnalysisError,
+    are_texts_similar,
     analyze_with_ollama,
     build_structured_issue,
+    normalize_plain_text,
     normalize_issues,
     normalize_recommendations,
+    recommendation_to_text,
+    trim_text,
+    TEXT_LIMITS,
 )
 logger = logging.getLogger(__name__)
 VALID_REST_METHODS = {"get", "post", "put", "patch", "delete"}
@@ -261,24 +266,141 @@ def normalize_risk_token(value: str | None) -> str:
     return "low"
 
 
-def collect_endpoint_issues(results: list[OpenAPIEndpointAnalysis]) -> list:
-    issues = []
-    for endpoint in results:
-        for issue in endpoint.issues or []:
-            issues.append(issue)
-    return issues
+def endpoint_value(endpoint: OpenAPIEndpointAnalysis | dict, key: str, default=None):
+    if isinstance(endpoint, dict):
+        return endpoint.get(key, default)
+    return getattr(endpoint, key, default)
 
 
-def collect_endpoint_recommendations(results: list[OpenAPIEndpointAnalysis]) -> list:
-    recommendations = []
-    seen = set()
+def endpoint_reference(endpoint: OpenAPIEndpointAnalysis | dict) -> dict[str, object]:
+    return {
+        "method": endpoint_value(endpoint, "method", "UNKNOWN"),
+        "path": endpoint_value(endpoint, "path", "unknown"),
+        "risk_level": normalize_risk_token(endpoint_value(endpoint, "risk_level")),
+    }
+
+
+def normalize_issue_object(issue: object) -> dict[str, object]:
+    if hasattr(issue, "model_dump"):
+        issue = issue.model_dump()
+
+    if isinstance(issue, dict):
+        title = issue.get("title") or issue.get("evidence") or "Problema detectado"
+        severity = issue.get("severity") or "medium"
+        category = issue.get("category") or "maintainability"
+        evidence = issue.get("evidence") or title
+        recommendation = issue.get("recommendation") or "Revisar y corregir este hallazgo."
+        fix_suggestion = issue.get("fix_suggestion") or issue.get("fixSuggestion")
+    else:
+        title = issue or "Problema detectado"
+        severity = "medium"
+        category = "maintainability"
+        evidence = title
+        recommendation = "Revisar y corregir este hallazgo."
+        fix_suggestion = None
+
+    return build_structured_issue(title, severity, category, evidence, recommendation, fix_suggestion)
+
+
+def issue_signature(issue: dict[str, object]) -> dict[str, str]:
+    return {
+        "title": normalize_plain_text(issue.get("title")).lower(),
+        "category": normalize_plain_text(issue.get("category")).lower(),
+        "severity": normalize_plain_text(issue.get("severity")).lower(),
+        "recommendation": normalize_plain_text(issue.get("recommendation")).lower(),
+    }
+
+
+def are_issues_similar(first: dict[str, object], second: dict[str, object]) -> bool:
+    first_signature = issue_signature(first)
+    second_signature = issue_signature(second)
+
+    if first_signature["category"] != second_signature["category"]:
+        return False
+
+    same_risk_type = first_signature["severity"] == second_signature["severity"]
+    similar_title = are_texts_similar(first_signature["title"], second_signature["title"], threshold=0.55)
+    similar_recommendation = are_texts_similar(
+        first_signature["recommendation"],
+        second_signature["recommendation"],
+        threshold=0.55,
+    )
+
+    return same_risk_type and (similar_title or similar_recommendation)
+
+
+def merge_endpoint_reference(target: dict[str, object], endpoint: dict[str, object]) -> None:
+    affected = target.setdefault("affected_endpoints", [])
+    key = (endpoint.get("method"), endpoint.get("path"))
+    if key not in {(item.get("method"), item.get("path")) for item in affected if isinstance(item, dict)}:
+        affected.append(endpoint)
+    target["occurrences"] = len(affected)
+
+
+def collect_endpoint_issues(results: list[OpenAPIEndpointAnalysis | dict]) -> list:
+    consolidated: list[dict[str, object]] = []
+
     for endpoint in results:
-        for recommendation in endpoint.recommendations or []:
-            key = str(recommendation)
-            if key not in seen:
-                seen.add(key)
-                recommendations.append(recommendation)
-    return recommendations
+        endpoint_issues = endpoint_value(endpoint, "issues", []) or []
+        endpoint_ref = endpoint_reference(endpoint)
+        for issue in endpoint_issues:
+            normalized_issue = normalize_issue_object(issue)
+            match = next((item for item in consolidated if are_issues_similar(item, normalized_issue)), None)
+            if match:
+                merge_endpoint_reference(match, endpoint_ref)
+                continue
+
+            normalized_issue["affected_endpoints"] = []
+            normalized_issue["occurrences"] = 0
+            merge_endpoint_reference(normalized_issue, endpoint_ref)
+            consolidated.append(normalized_issue)
+
+    for issue in consolidated:
+        if issue.get("occurrences", 0) > 1:
+            issue["evidence"] = trim_text(
+                f"{issue['title']} detectado en {issue['occurrences']} endpoints.",
+                TEXT_LIMITS["issue_evidence"],
+            )
+
+    return consolidated
+
+
+def recommendation_signature(recommendation: object) -> str:
+    return normalize_plain_text(recommendation_to_text(recommendation)).lower()
+
+
+def are_recommendations_similar(first: object, second: object) -> bool:
+    return are_texts_similar(recommendation_signature(first), recommendation_signature(second), threshold=0.6)
+
+
+def collect_endpoint_recommendations(results: list[OpenAPIEndpointAnalysis | dict]) -> list:
+    consolidated: list[dict[str, object]] = []
+
+    for endpoint in results:
+        endpoint_recommendations = endpoint_value(endpoint, "recommendations", []) or []
+        endpoint_ref = endpoint_reference(endpoint)
+        for recommendation in endpoint_recommendations:
+            text = trim_text(recommendation_to_text(recommendation), TEXT_LIMITS["recommendation"])
+            if not text:
+                continue
+
+            match = next(
+                (item for item in consolidated if are_recommendations_similar(item["recommendation"], text)),
+                None,
+            )
+            if match:
+                merge_endpoint_reference(match, endpoint_ref)
+                continue
+
+            item = {
+                "recommendation": text,
+                "occurrences": 0,
+                "affected_endpoints": [],
+            }
+            merge_endpoint_reference(item, endpoint_ref)
+            consolidated.append(item)
+
+    return consolidated
 
 
 def build_global_observations(results: list[OpenAPIEndpointAnalysis]) -> dict[str, str]:

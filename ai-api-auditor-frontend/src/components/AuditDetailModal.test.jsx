@@ -39,7 +39,16 @@ const audit = {
       recommendation: "Añadir JWT u OAuth2.",
     },
   ],
-  recommendations: ["Documentar controles de seguridad."],
+  recommendations: [
+    {
+      recommendation: "Documentar controles de seguridad.",
+      occurrences: 2,
+      affected_endpoints: [
+        { method: "GET", path: "/users", risk_level: "high" },
+        { method: "POST", path: "/orders", risk_level: "medium" },
+      ],
+    },
+  ],
   endpoints: [
     {
       method: "GET",
@@ -76,6 +85,10 @@ describe("AuditDetailModal", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Endpoints" })[0]);
     expect(screen.getByText("GET")).toBeInTheDocument();
     expect(screen.getByText("Usuarios")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Recomendaciones" })[0]);
+    expect(screen.getByText("Documentar controles de seguridad.")).toBeInTheDocument();
+    expect(screen.getByText("2 endpoints afectados")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "JSON técnico" })[0]);
     expect(screen.getByText(/"name": "Auditoría usuarios"/)).toBeInTheDocument();

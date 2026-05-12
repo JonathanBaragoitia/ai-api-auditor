@@ -65,4 +65,31 @@ describe("IssueList", () => {
     expect(screen.getByText("Ejemplo de error")).toBeInTheDocument();
     expect(screen.getByText(/Token inválido/)).toBeInTheDocument();
   });
+
+  it("permite expandir endpoints afectados en findings consolidados", () => {
+    render(
+      <IssueList
+        translate={(text) => text}
+        issues={[
+          {
+            title: "Falta autenticación",
+            severity: "high",
+            category: "security",
+            evidence: "Falta autenticación detectado en 2 endpoints.",
+            recommendation: "Añadir JWT u OAuth2.",
+            occurrences: 2,
+            affected_endpoints: [
+              { method: "GET", path: "/users", risk_level: "high" },
+              { method: "POST", path: "/orders", risk_level: "high" },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("2 endpoints afectados")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Ver endpoints afectados"));
+    expect(screen.getByText("/users")).toBeInTheDocument();
+    expect(screen.getByText("/orders")).toBeInTheDocument();
+  });
 });
