@@ -1,76 +1,108 @@
 # AI API Auditor
 
-SaaS full-stack de auditoría inteligente de APIs OpenAPI con IA local. Permite subir una especificación OpenAPI, analizar endpoints REST, detectar problemas de seguridad/diseño/documentación y generar un informe ejecutivo con score, riesgo, issues estructurados y recomendaciones accionables.
+**Plataforma SaaS para auditoría inteligente de APIs, análisis OpenAPI/Swagger y detección de riesgos técnicos con asistencia de IA local.**
 
-El proyecto está pensado como portfolio técnico: muestra arquitectura full-stack, autenticación, persistencia, migraciones, integración con LLM local, testing automatizado, CI/CD y una interfaz SaaS orientada a producto.
+AI API Auditor permite analizar especificaciones OpenAPI, evaluar endpoints REST, detectar problemas de seguridad, diseño, documentación y mantenibilidad, y presentar resultados en una interfaz SaaS con dashboard ejecutivo, historial de auditorías, métricas técnicas y comparación evolutiva.
 
-## Demo
+El proyecto está diseñado como producto full-stack desplegable y como portfolio profesional senior: backend robusto, frontend orientado a producto, autenticación, persistencia, migraciones, testing, CI/CD y ejecución con Docker Compose.
 
-Actualmente no hay capturas versionadas en el repositorio. La app se puede ejecutar localmente con backend en `http://127.0.0.1:8000` y frontend en `http://127.0.0.1:5173`.
+## Capturas
 
-Cuando se añadan capturas reales, esta sección puede incluir:
+### Página Principal
 
-- Login y registro.
-- Dashboard ejecutivo.
-- Análisis OpenAPI.
-- Historial con filtros.
-- Detalle de auditoría.
-- Exportación de informe.
+![Página principal de AI API Auditor](ai-api-auditor-frontend/src/assets/screenshots/main-page.png)
 
-## Features Principales
+### Dashboard Ejecutivo
 
-- Registro e inicio de sesión con JWT.
-- Auditoría automática de esquemas OpenAPI.
-- Auditoría manual de endpoints.
-- Modos de auditoría: seguridad, diseño REST, documentación y enterprise.
-- Dashboard ejecutivo con métricas históricas, distribución de riesgos y comparación básica de evolución.
-- Historial por usuario con búsqueda, filtros, ordenación y detalle.
-- Issues estructurados con severidad, categoría, evidencia, recomendación y sugerencias de corrección.
-- Deduplicación inteligente de findings y recomendaciones similares.
-- Consolidación de endpoints afectados por issue o recomendación.
-- Exportación de informes en JSON, TXT y Markdown.
-- Informe HTML imprimible desde navegador.
-- Notas internas y etiquetas por auditoría.
-- Estados de ejecución: pending, processing, completed y failed.
-- Estados vacíos profesionales para dashboard, historial, resultados, issues y recomendaciones.
-- Error Boundary global para evitar pantalla negra ante errores de renderizado.
-- Migraciones de base de datos con Alembic.
-- Tests backend y frontend.
-- CI/CD con GitHub Actions.
-- Docker Compose para levantar PostgreSQL, backend y frontend localmente.
-- Pre-commit hooks para controles básicos de calidad.
+![Dashboard ejecutivo con métricas de auditoría](ai-api-auditor-frontend/src/assets/screenshots/dashboard.png)
 
-## Stack Técnico
+### Comparación Evolutiva
 
-- Backend: FastAPI, SQLAlchemy, Pydantic.
-- Autenticación: JWT, bcrypt/passlib.
-- Migraciones: Alembic.
-- Base de datos: SQLite en desarrollo local/tests, PostgreSQL con Docker Compose.
-- IA local: Ollama con `llama3` por defecto.
-- Frontend: React, Vite.
-- Testing backend: pytest.
-- Testing frontend: Vitest, React Testing Library, jest-dom, jsdom.
-- Calidad: flake8, ESLint, pre-commit.
-- CI/CD: GitHub Actions.
-- DevOps local: Docker y Docker Compose.
+![Comparación evolutiva entre auditorías](ai-api-auditor-frontend/src/assets/screenshots/evolution.png)
 
-## Arquitectura
+### Historial de Auditorías
+
+![Historial de auditorías con filtros](ai-api-auditor-frontend/src/assets/screenshots/history.png)
+
+## Qué Hace
+
+- Analiza especificaciones OpenAPI/Swagger enviadas por el usuario.
+- Extrae endpoints REST y calcula métricas de calidad técnica.
+- Detecta riesgos de seguridad, problemas de diseño REST, carencias de documentación y oportunidades de mejora.
+- Usa Ollama para análisis asistido por IA local.
+- Genera issues estructurados con severidad, categoría, evidencia, recomendación y sugerencias de corrección.
+- Consolida problemas repetidos y endpoints afectados.
+- Muestra un dashboard ejecutivo con distribución de riesgos, score medio y evolución entre auditorías.
+- Mantiene historial por usuario con filtros, búsqueda, detalle técnico, notas internas y etiquetas.
+- Permite exportar resultados en formatos técnicos y de informe.
+
+## Características Principales
+
+- **Autenticación SaaS:** registro, inicio de sesión y protección de endpoints mediante JWT.
+- **Auditoría inteligente de APIs:** análisis automático de contratos OpenAPI y endpoints REST.
+- **Dashboard ejecutivo:** métricas agregadas, riesgos, puntuaciones y problemas principales.
+- **Comparación evolutiva:** cambios de puntuación, riesgo, problemas nuevos, problemas resueltos y endpoints mejorados o empeorados.
+- **Historial de auditorías:** listado multiusuario con filtros, búsqueda, ordenación y detalle.
+- **Detección de riesgos:** clasificación por bajo, medio, alto y crítico.
+- **Métricas técnicas:** score normalizado, total de endpoints, distribución de riesgos y recomendaciones.
+- **Gestión interna:** notas privadas y etiquetas por auditoría.
+- **Exportación de informes:** JSON, TXT, Markdown e informe HTML imprimible.
+- **Compatibilidad local y Docker:** SQLite para desarrollo rápido y PostgreSQL con Docker Compose.
+
+## Stack Tecnológico
+
+### Backend
+
+- Python
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- SQLite para desarrollo local y tests
+- Alembic
+- Pydantic
+- JWT con `python-jose`
+- Hashing de contraseñas con `passlib` y bcrypt
+
+### Frontend
+
+- React
+- Vite
+- Vitest
+- React Testing Library
+- ESLint
+
+### Infraestructura
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- PostgreSQL en contenedor
+- Migraciones automáticas con Alembic al arrancar backend en Docker
+
+### IA
+
+- Ollama
+- Modelo local configurable mediante `OLLAMA_MODEL`
+- Análisis asistido por IA con salida normalizada en castellano
+
+## Arquitectura General
 
 ```text
 ai-api-auditor/
 ├── app/                         # Backend FastAPI
-│   ├── core/                    # Configuración y seguridad
-│   ├── db/                      # Base SQLAlchemy y sesiones
+│   ├── core/                    # Configuración, seguridad y JWT
+│   ├── db/                      # Engine SQLAlchemy y sesiones
 │   ├── dependencies/            # Auth y rate limiting
 │   ├── models/                  # Modelos SQLAlchemy
-│   ├── routers/                 # Rutas HTTP: auth y audits
+│   ├── routers/                 # Endpoints HTTP
 │   ├── schemas/                 # Contratos Pydantic
-│   ├── services/                # Auditoría, OpenAPI e integración IA
-│   └── utils/                   # Scoring y utilidades
+│   ├── services/                # OpenAPI, scoring e integración IA
+│   └── utils/                   # Utilidades de dominio
 ├── ai-api-auditor-frontend/      # Frontend React/Vite
-│   ├── src/components/          # Componentes UI
+│   ├── src/assets/screenshots/  # Capturas del producto
+│   ├── src/components/          # Componentes de interfaz
 │   ├── src/hooks/               # Hooks de auth y auditorías
-│   ├── src/utils/               # API client, exportaciones y helpers
+│   ├── src/utils/               # API client, reportes y helpers
 │   └── src/test/                # Setup de tests frontend
 ├── alembic/                     # Migraciones de base de datos
 ├── tests/                       # Tests backend
@@ -80,24 +112,25 @@ ai-api-auditor/
 └── README.md
 ```
 
-## Flujo de Auditoría OpenAPI
+## Flujo de Auditoría
 
-1. El usuario inicia sesión y envía un esquema OpenAPI desde el frontend.
+1. El usuario inicia sesión y envía una especificación OpenAPI desde el frontend.
 2. El backend valida tamaño, estructura, paths y operaciones permitidas.
-3. Se extraen endpoints REST (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
-4. Cada endpoint se analiza con Ollama según el modo de auditoría seleccionado.
-5. El backend normaliza la respuesta IA, estructura issues y recomendaciones, deduplica findings similares y calcula riesgo global.
-6. La auditoría se persiste asociada al usuario autenticado.
-7. El frontend muestra resumen ejecutivo, dashboard, historial, detalle por endpoint y exportaciones.
+3. Se extraen endpoints REST compatibles.
+4. Cada endpoint se analiza según el modo seleccionado: seguridad, diseño REST, documentación o enterprise.
+5. Ollama genera un análisis asistido por IA y el backend normaliza la salida.
+6. Se calculan score, riesgo global, issues, recomendaciones y métricas agregadas.
+7. La auditoría se persiste asociada al usuario autenticado.
+8. El frontend presenta dashboard, historial, detalle por endpoint, comparación evolutiva y exportaciones.
 
-## Ejecutar Local Sin Docker
+## Instalación Local
 
 ### Requisitos
 
-- Python 3.11+ recomendado.
-- Node.js 20+ recomendado.
-- Ollama instalado si quieres usar análisis IA local.
-- Docker opcional para levantar PostgreSQL y servicios completos.
+- Python 3.11 o superior recomendado.
+- Node.js 20 o superior recomendado.
+- Ollama instalado si se quiere usar análisis IA local.
+- Docker opcional para ejecutar PostgreSQL, backend y frontend de forma integrada.
 
 ### Backend
 
@@ -110,13 +143,18 @@ python -m alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Backend:
+Servicios locales del backend:
 
 - API: `http://127.0.0.1:8000`
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-Por defecto se usa SQLite con `DATABASE_URL=sqlite:///./ai_api_auditor.db`.
-Puedes usar PostgreSQL local cambiando `DATABASE_URL`, por ejemplo:
+Por defecto, el backend usa SQLite:
+
+```env
+DATABASE_URL=sqlite:///./ai_api_auditor.db
+```
+
+También puede apuntar a PostgreSQL local mediante `DATABASE_URL`:
 
 ```env
 DATABASE_URL=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@localhost:5432/ai_api_auditor
@@ -130,63 +168,84 @@ npm install
 npm run dev
 ```
 
-Frontend:
+Frontend local:
 
 - `http://127.0.0.1:5173`
 
-### Ollama Local
+Variable recomendada para desarrollo:
 
-Instalar Ollama y descargar el modelo configurado:
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+### Ollama
 
 ```bash
 ollama pull llama3
 ollama run llama3
 ```
 
-El backend espera Ollama en:
+Variables relevantes:
 
 ```env
 OLLAMA_URL=http://localhost:11434/api/generate
 OLLAMA_MODEL=llama3
+OLLAMA_TIMEOUT_SECONDS=60
 ```
 
-Si Ollama no está disponible, las auditorías IA pueden fallar con estado `failed` y mensaje de error persistido.
+Ollama no se levanta desde Docker Compose. Si se ejecuta el backend en Docker, se usa `http://host.docker.internal:11434/api/generate` por defecto.
 
-## Docker Compose
+## Ejecución con Docker Compose
+
+Levantar todos los servicios:
 
 ```bash
 docker compose up --build
 ```
 
-Servicios:
+Levantar desde cero eliminando contenedores huérfanos:
 
-- PostgreSQL: `localhost:5432`
+```bash
+docker compose down --remove-orphans
+docker compose up --build
+```
+
+Recrear también el volumen de PostgreSQL:
+
+```bash
+docker compose down --volumes --remove-orphans
+docker compose up --build
+```
+
+Servicios expuestos:
+
+- PostgreSQL: `localhost:5433`
 - Backend: `http://localhost:8000`
 - Frontend preview: `http://localhost:4173`
 
-Docker Compose levanta PostgreSQL, espera a que esté saludable y ejecuta `python -m alembic upgrade head` antes de iniciar Uvicorn.
-
-La URL de conexión del backend se construye automáticamente dentro de Compose con `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD`:
+Dentro de Docker, el backend conecta con PostgreSQL usando el hostname interno `postgres`:
 
 ```text
 postgresql+psycopg2://<POSTGRES_USER>:<POSTGRES_PASSWORD>@postgres:5432/<POSTGRES_DB>
 ```
 
-Ollama no se levanta dentro de Docker Compose. Debe correr localmente; el backend en Docker usa `http://host.docker.internal:11434/api/generate`.
+El backend espera a que PostgreSQL esté saludable, valida conectividad por socket, aplica migraciones Alembic y después inicia Uvicorn.
 
 ## Variables de Entorno
 
-Backend local (`.env` en raíz):
+Backend local (`.env` en la raíz):
 
 ```env
 DATABASE_URL=sqlite:///./ai_api_auditor.db
 SECRET_KEY=change-me-in-production
+TOKEN_ISSUER=ai-api-auditor
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 OLLAMA_URL=http://localhost:11434/api/generate
 OLLAMA_MODEL=llama3
 OLLAMA_TIMEOUT_SECONDS=60
 MAX_OPENAPI_SIZE_CHARS=200000
+MAX_REQUEST_BODY_SIZE_CHARS=250000
 MAX_OPENAPI_ENDPOINTS=50
 MAX_OPENAPI_OPERATIONS_PER_PATH=5
 RATE_LIMIT_LOGIN_REQUESTS=5
@@ -195,14 +254,12 @@ RATE_LIMIT_AI_REQUESTS=10
 RATE_LIMIT_AI_WINDOW_SECONDS=300
 ```
 
-Docker Compose con PostgreSQL:
+PostgreSQL en Docker Compose:
 
 ```env
 POSTGRES_DB=ai_api_auditor
 POSTGRES_USER=ai_api_auditor
 POSTGRES_PASSWORD=ai_api_auditor_password
-# Compose inyecta en backend:
-# DATABASE_URL=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@postgres:5432/ai_api_auditor
 ```
 
 Frontend (`ai-api-auditor-frontend/.env`):
@@ -211,20 +268,14 @@ Frontend (`ai-api-auditor-frontend/.env`):
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Nota: el proyecto usa `OLLAMA_URL`, no `OLLAMA_BASE_URL`.
+En producción, `SECRET_KEY` y `POSTGRES_PASSWORD` deben sustituirse por valores seguros gestionados fuera del repositorio.
 
 ## Migraciones
 
-Aplicar migraciones:
+Aplicar migraciones localmente:
 
 ```bash
 python -m alembic upgrade head
-```
-
-Aplicar migraciones dentro del backend Docker:
-
-```bash
-docker compose run --rm backend python -m alembic upgrade head
 ```
 
 Ver migración actual:
@@ -236,15 +287,28 @@ python -m alembic current
 Crear una nueva migración:
 
 ```bash
-python -m alembic revision --autogenerate -m "descripcion del cambio"
+python -m alembic revision --autogenerate -m "descripcion_del_cambio"
 ```
 
-Si tu base local fue creada antes de Alembic pero ya tiene tablas iniciales:
+Aplicar migraciones dentro del backend Docker:
 
 ```bash
-python -m alembic stamp 001_initial_schema
-python -m alembic upgrade head
+docker compose run --rm backend python -m alembic upgrade head
 ```
+
+## Seguridad
+
+- Autenticación mediante JWT.
+- Hashing de contraseñas con bcrypt.
+- Validación backend con Pydantic para credenciales, auditorías, payloads y metadatos.
+- Control de acceso por usuario en consultas y detalle de auditorías.
+- Rate limiting básico para login y auditorías IA.
+- CORS configurado por entorno.
+- Límite de tamaño para requests y documentos OpenAPI.
+- Validación de paths, métodos HTTP y número de endpoints analizados.
+- Headers de seguridad HTTP para reducir exposición del navegador.
+- Separación clara entre frontend, backend, base de datos y servicio IA.
+- Mensajes de error controlados para evitar exponer detalles internos del proveedor IA.
 
 ## Testing y Calidad
 
@@ -264,22 +328,29 @@ npm run lint
 npm run build
 ```
 
-Pre-commit:
+Validaciones incluidas:
 
-```bash
-python -m pip install pre-commit
-pre-commit install
-pre-commit run --all-files
-```
+- Tests backend con pytest.
+- Tests frontend con Vitest y React Testing Library.
+- Linting backend con flake8.
+- Linting frontend con ESLint.
+- Build de producción del frontend.
+- Workflow de GitHub Actions en `push` y `pull_request`.
 
 ## CI/CD
 
-GitHub Actions ejecuta validaciones en `push` y `pull_request`:
+GitHub Actions ejecuta validaciones automáticas para backend y frontend:
 
-- Backend: instalación de dependencias, validación de sintaxis, flake8, import de FastAPI y pytest.
-- Frontend: instalación de dependencias, Vitest, ESLint y build de producción con Vite.
+- Instalación de dependencias.
+- Validación de sintaxis Python.
+- Linting backend.
+- Import del backend FastAPI.
+- Tests backend.
+- Tests frontend.
+- Linting frontend.
+- Build frontend.
 
-Workflow:
+Workflow principal:
 
 ```text
 .github/workflows/ci.yml
@@ -287,22 +358,25 @@ Workflow:
 
 ## Qué Demuestra Este Proyecto
 
-- Arquitectura full-stack con separación clara entre frontend, backend, base de datos y servicio IA.
-- Construcción de una experiencia SaaS real: autenticación, historial multiusuario, dashboard, notas, etiquetas y estados robustos.
-- Integración de IA local con control de fallos y normalización de salida.
-- Modelado de dominio: auditorías, endpoints, issues, recomendaciones, riesgos y estados de ejecución.
-- Seguridad aplicada: JWT, hashing de contraseñas, ownership por usuario y rate limiting básico.
-- Persistencia mantenible con SQLAlchemy y Alembic.
-- Calidad de producto frontend: Error Boundary, estados vacíos, componentes reutilizables, exportaciones y tests.
-- Testing automatizado en backend y frontend.
-- CI/CD básico con GitHub Actions.
-- Prácticas de DevOps local con Docker Compose y PostgreSQL.
+- Diseño de una plataforma SaaS full-stack con autenticación y persistencia multiusuario.
+- Arquitectura backend con FastAPI, SQLAlchemy, Alembic y PostgreSQL.
+- Frontend React orientado a producto con dashboard, historial, detalle y exportaciones.
+- Integración de análisis asistido por IA local con Ollama.
+- Modelado de dominio para auditorías, endpoints, riesgos, issues y recomendaciones.
+- Buenas prácticas de seguridad, validación de datos y control de acceso.
+- Testing automatizado y CI/CD básico.
+- Despliegue local profesional mediante Docker Compose.
 
-## Próximas Mejoras Posibles
+## Roadmap Futuro
 
-- Refresh tokens.
-- Roles de usuario y permisos.
+- Refresh tokens y rotación de sesión.
+- Roles de usuario y permisos por organización.
 - Comparación avanzada entre auditorías de una misma API.
-- Integración opcional con modelos remotos además de Ollama local.
+- Integración opcional con proveedores IA remotos.
+- Métricas históricas por proyecto o workspace.
 - Umbrales mínimos de cobertura en CI.
-- Separar perfiles Docker de desarrollo y producción.
+- Perfiles Docker separados para desarrollo y producción.
+
+## Licencia
+
+Este repositorio no declara todavía una licencia formal. Si quieres reutilizar el código fuera de un contexto de evaluación o portfolio, define primero una licencia explícita en el proyecto.
