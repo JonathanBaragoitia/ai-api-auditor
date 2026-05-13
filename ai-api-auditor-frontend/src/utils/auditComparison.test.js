@@ -8,11 +8,12 @@ describe("auditComparison", () => {
       [
         { title: "Falta autenticación", severity: "high", category: "security" },
         { title: "Falta paginación", severity: "medium", category: "performance" },
+        { title: "Falta paginación", severity: "medium", category: "performance" },
       ],
       [{ title: "Falta autenticación", severity: "high", category: "security" }, "Documentación incompleta"],
     );
 
-    expect(comparison.newItems).toEqual(["Falta paginación"]);
+    expect(comparison.newItems).toEqual(["Falta paginación (x2)"]);
     expect(comparison.resolvedItems).toEqual(["Documentación incompleta"]);
   });
 
@@ -51,10 +52,22 @@ describe("auditComparison", () => {
     );
 
     expect(comparison.formattedScoreDelta).toBe("+8.8");
-    expect(comparison.riskChangeLabel).toBe("Medio -> Bajo");
+    expect(comparison.riskChangeLabel).toBe("Mejora: Medio -> Bajo");
     expect(comparison.issues.newItems).toEqual(["Falta paginación"]);
     expect(comparison.issues.resolvedItems).toEqual(["Falta autenticación"]);
     expect(comparison.recommendations.newItems).toEqual(["Añadir paginación."]);
     expect(comparison.endpoints.improved).toHaveLength(1);
+  });
+
+  it("etiqueta riesgo estable y empeoramientos", () => {
+    expect(compareAudits(
+      { average_score: 70, global_risk_level: "medium" },
+      { average_score: 70, global_risk_level: "medium" },
+    ).riskChangeLabel).toBe("Riesgo estable: Medio");
+
+    expect(compareAudits(
+      { average_score: 60, global_risk_level: "high" },
+      { average_score: 70, global_risk_level: "low" },
+    ).riskChangeLabel).toBe("Empeora: Bajo -> Alto");
   });
 });

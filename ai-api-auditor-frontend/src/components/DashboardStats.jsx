@@ -44,7 +44,7 @@ function DashboardStats({ history, sectionStyle }) {
 
   return (
     <section>
-      <h2 style={sectionStyle}>Panel ejecutivo</h2>
+      <h2 style={sectionStyle}>Resumen de auditorías</h2>
       <div style={dashboardGridStyle}>
         <MetricCard title="Auditorías" value={total} style={metricCardStyle} />
         <MetricCard title="Puntuación media" value={averageScore === "-" ? "-" : `${formatCompactNumber(averageScore)}/100`} style={metricCardStyle} />
@@ -238,6 +238,9 @@ function formatScore(audit) {
 }
 
 function ComparisonList({ title, items, emptyText }) {
+  const visibleItems = items.slice(0, 3);
+  const hiddenCount = items.length - visibleItems.length;
+
   return (
     <article style={comparisonListStyle}>
       <div style={comparisonListHeaderStyle}>
@@ -246,7 +249,10 @@ function ComparisonList({ title, items, emptyText }) {
       </div>
       {items.length > 0 ? (
         <ul style={comparisonItemsStyle}>
-          {items.slice(0, 4).map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
+          {visibleItems.map((item, index) => (
+            <li key={`${item}-${index}`} style={comparisonItemStyle} title={item}>{item}</li>
+          ))}
+          {hiddenCount > 0 && <li style={moreItemsStyle}>Ver más: {hiddenCount} adicionales</li>}
         </ul>
       ) : (
         <p style={mutedStyle}>{emptyText}</p>
@@ -256,7 +262,7 @@ function ComparisonList({ title, items, emptyText }) {
 }
 
 function formatEndpointChange(endpoint) {
-  return `${endpoint.label}: ${endpoint.formattedScoreDelta} puntos, riesgo ${endpoint.riskChangeLabel}`;
+  return `${endpoint.label} (${endpoint.formattedScoreDelta}, ${endpoint.riskChangeLabel})`;
 }
 
 function riskSegmentColor(risk) {
@@ -449,9 +455,24 @@ const comparisonListHeaderStyle = {
 const comparisonItemsStyle = {
   color: "#cbd5e1",
   display: "grid",
-  gap: 6,
+  gap: 8,
   margin: "10px 0 0",
   paddingLeft: 18,
+};
+
+const comparisonItemStyle = {
+  lineHeight: 1.45,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const moreItemsStyle = {
+  color: "#38bdf8",
+  fontSize: 13,
+  fontWeight: 700,
+  listStyle: "none",
+  marginLeft: -18,
 };
 
 export default DashboardStats;

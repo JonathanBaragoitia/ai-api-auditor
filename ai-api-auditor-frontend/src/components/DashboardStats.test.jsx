@@ -11,7 +11,7 @@ describe("DashboardStats", () => {
   it("no rompe con historial vacío", () => {
     render(<DashboardStats history={[]} sectionStyle={{}} />);
 
-    expect(screen.getByText("Panel ejecutivo")).toBeInTheDocument();
+    expect(screen.getByText("Resumen de auditorías")).toBeInTheDocument();
     expect(screen.getByText("Sin auditorías todavía")).toBeInTheDocument();
     expect(screen.getByText("Puntuación media")).toBeInTheDocument();
     expect(screen.getByText("Panel sin datos todavía")).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("DashboardStats", () => {
     expect(screen.getByText("Cambio de puntuación")).toBeInTheDocument();
     expect(screen.getByText("Cambio de riesgo")).toBeInTheDocument();
     expect(screen.getByText("+8.8")).toBeInTheDocument();
-    expect(screen.getByText("Medio -> Bajo")).toBeInTheDocument();
+    expect(screen.getByText("Mejora: Medio -> Bajo")).toBeInTheDocument();
     expect(screen.queryByText(/8\.799999/)).not.toBeInTheDocument();
   });
 
@@ -107,8 +107,8 @@ describe("DashboardStats", () => {
     expect(screen.getAllByText("Problemas solucionados").length).toBeGreaterThan(0);
     expect(screen.getByText("Falta paginación")).toBeInTheDocument();
     expect(screen.getByText("Documentación incompleta")).toBeInTheDocument();
-    expect(screen.getByText(/GET \/users: \+20 puntos/)).toBeInTheDocument();
-    expect(screen.getByText(/POST \/orders: -30 puntos/)).toBeInTheDocument();
+    expect(screen.getByText(/GET \/users \(\+20, Mejora: Medio -> Bajo\)/)).toBeInTheDocument();
+    expect(screen.getByText(/POST \/orders \(-30, Empeora: Medio -> Alto\)/)).toBeInTheDocument();
     expect(screen.getAllByText("+1").length).toBeGreaterThan(0);
     expect(screen.getAllByText("-1").length).toBeGreaterThan(0);
   });
@@ -145,6 +145,44 @@ describe("DashboardStats", () => {
     expect(screen.getByText("Distribución de riesgos")).toBeInTheDocument();
     expect(screen.getAllByText("25%")).toHaveLength(4);
     expect(screen.getByText("Riesgo más frecuente:")).toBeInTheDocument();
+  });
+
+  it("limita listas de comparación y muestra ver más", () => {
+    render(
+      <DashboardStats
+        history={[
+          {
+            id: 1,
+            name: "Auditoría actual",
+            average_score: 80,
+            risk_level: "medium",
+            status: "completed",
+            issues: [
+              { title: "Problema A", severity: "medium", category: "security" },
+              { title: "Problema B", severity: "medium", category: "security" },
+              { title: "Problema C", severity: "medium", category: "security" },
+              { title: "Problema D", severity: "medium", category: "security" },
+            ],
+          },
+          {
+            id: 2,
+            name: "Auditoría previa",
+            average_score: 80,
+            risk_level: "medium",
+            status: "completed",
+            issues: [],
+          },
+        ]}
+        sectionStyle={{}}
+      />,
+    );
+
+    expect(screen.getByText("Problema A")).toBeInTheDocument();
+    expect(screen.getByText("Problema B")).toBeInTheDocument();
+    expect(screen.getByText("Problema C")).toBeInTheDocument();
+    expect(screen.queryByText("Problema D")).not.toBeInTheDocument();
+    expect(screen.getByText("Ver más: 1 adicionales")).toBeInTheDocument();
+    expect(screen.getByText("Riesgo estable: Medio")).toBeInTheDocument();
   });
 
   it("muestra top problemas detectados y últimas auditorías", () => {

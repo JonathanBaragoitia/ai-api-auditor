@@ -24,7 +24,7 @@ export function compareAudits(currentAudit, previousAudit) {
     formattedScoreDelta: scoreDelta === null ? "-" : formatSignedNumber(scoreDelta),
     currentRisk,
     previousRisk,
-    riskChangeLabel: `${getRiskLabel(previousRisk)} -> ${getRiskLabel(currentRisk)}`,
+    riskChangeLabel: getRiskChangeLabel(currentRisk, previousRisk),
     issues: compareIssues(collectIssues(currentAudit), collectIssues(previousAudit)),
     recommendations: compareRecommendations(
       collectRecommendations(currentAudit),
@@ -66,7 +66,7 @@ export function compareEndpoints(currentEndpoints, previousEndpoints) {
       formattedScoreDelta: formatSignedNumber(scoreDelta),
       currentRisk,
       previousRisk,
-      riskChangeLabel: `${getRiskLabel(previousRisk)} -> ${getRiskLabel(currentRisk)}`,
+      riskChangeLabel: getRiskChangeLabel(currentRisk, previousRisk),
     };
 
     if (scoreDelta > 0.1 || riskDelta < 0) {
@@ -89,19 +89,56 @@ function compareRecommendations(currentRecommendations, previousRecommendations)
 }
 
 function compareItems(currentItems, previousItems, getSignature, getLabel) {
-  const previousBySignature = new Map(previousItems.map((item) => [getSignature(item), item]));
-  const currentBySignature = new Map(currentItems.map((item) => [getSignature(item), item]));
+  const previousBySignature = groupItemsBySignature(previousItems, getSignature, getLabel);
+  const currentBySignature = groupItemsBySignature(currentItems, getSignature, getLabel);
 
   return {
     currentCount: currentBySignature.size,
     previousCount: previousBySignature.size,
     newItems: [...currentBySignature.entries()]
       .filter(([signature]) => signature && !previousBySignature.has(signature))
-      .map(([, item]) => getLabel(item)),
+      .map(([, item]) => formatGroupedLabel(item)),
     resolvedItems: [...previousBySignature.entries()]
       .filter(([signature]) => signature && !currentBySignature.has(signature))
-      .map(([, item]) => getLabel(item)),
+      .map(([, item]) => formatGroupedLabel(item)),
   };
+}
+
+function groupItemsBySignature(items, getSignature, getLabel) {
+  return items.reduce((acc, item) => {
+    const signature = getSignature(item);
+    if (!signature) return acc;
+
+    const current = acc.get(signature);
+    acc.set(signature, {
+      label: current?.label || getLabel(item),
+      occurrences: (current?.occurrences || 0) + getOccurrences(item),
+    });
+
+    return acc;
+  }, new Map());
+}
+
+function formatGroupedLabel(item) {
+  return item.occurrences > 1 ? `${item.label} (x${item.occurrences})` : item.label;
+}
+
+function getOccurrences(item) {
+  return Number.isFinite(item?.occurrences) && item.occurrences > 0 ? item.occurrences : 1;
+}
+
+function getRiskChangeLabel(currentRisk, previousRisk) {
+  const currentLabel = getRiskLabel(currentRisk);
+  const previousLabel = getRiskLabel(previousRisk);
+  const currentPriority = riskPriority[currentRisk] || 0;
+  const previousPriority = riskPriority[previousRisk] || 0;
+
+  if (currentPriority === previousPriority) {
+    return `Riesgo estable: ${currentLabel}`;
+  }
+
+  const prefix = currentPriority < previousPriority ? "Mejora" : "Empeora";
+  return `${prefix}: ${previousLabel} -> ${currentLabel}`;
 }
 
 function collectIssues(audit) {
