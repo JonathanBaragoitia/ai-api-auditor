@@ -1,6 +1,15 @@
 <h1 align="center">AI API Auditor</h1>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-blue" alt="Python 3.11" />
+  <img src="https://img.shields.io/badge/FastAPI-Backend-green" alt="FastAPI Backend" />
+  <img src="https://img.shields.io/badge/React-Frontend-61DAFB" alt="React Frontend" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Database-336791" alt="PostgreSQL Database" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED" alt="Docker Ready" />
+  <img src="https://img.shields.io/badge/CI-GitHub%20Actions-success" alt="GitHub Actions CI" />
+</p>
+
+<p align="center">
   <img src="ai-api-auditor-frontend/src/assets/hero.png" width="300" alt="AI API Auditor Logo" />
 </p>
 
