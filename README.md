@@ -1,16 +1,18 @@
-# AI API Auditor
+<h1 align="center">AI API Auditor</h1>
 
 <p align="center">
-  <img src="ai-api-auditor-frontend/src/assets/hero.png" alt="AI API Auditor - plataforma SaaS de auditoría inteligente de APIs" width="900" />
+  <img src="ai-api-auditor-frontend/src/assets/hero.png" width="300" alt="AI API Auditor Logo" />
 </p>
 
 <p align="center">
-  <strong>Plataforma SaaS de auditoría inteligente de APIs OpenAPI/Swagger con FastAPI, React, PostgreSQL, Docker y análisis asistido por IA.</strong>
+  <strong>Plataforma SaaS de auditoría inteligente de APIs OpenAPI/Swagger con FastAPI, React, PostgreSQL, Docker y análisis asistido por IA local.</strong>
 </p>
 
-AI API Auditor permite analizar especificaciones OpenAPI, evaluar endpoints REST, detectar problemas de seguridad, diseño, documentación y mantenibilidad, y presentar resultados en una interfaz SaaS con dashboard ejecutivo, historial de auditorías, métricas técnicas y comparación evolutiva.
+<p align="center">
+  Analiza especificaciones OpenAPI, evalúa endpoints REST, detecta riesgos técnicos y presenta resultados en una experiencia SaaS con dashboard ejecutivo, historial de auditorías, métricas y comparación evolutiva.
+</p>
 
-El proyecto está diseñado como producto full-stack desplegable y como portfolio profesional senior: backend robusto, frontend orientado a producto, autenticación, persistencia, migraciones, testing, CI/CD y ejecución con Docker Compose.
+AI API Auditor está diseñado como producto full-stack desplegable y como portfolio profesional senior: backend robusto, frontend orientado a producto, autenticación, persistencia, migraciones, testing, CI/CD y ejecución con Docker Compose.
 
 ## Capturas
 
