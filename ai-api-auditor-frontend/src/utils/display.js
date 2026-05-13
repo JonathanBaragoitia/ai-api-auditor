@@ -39,16 +39,25 @@ export function formatPercentage(value) {
 
 export function normalizeAuditName(name) {
   const rawName = String(name || "").trim();
-  if (!rawName) return "Auditoría sin nombre";
+  if (!rawName) return "Auditoría API";
 
   const normalizedNames = {
-    "frontend audit": "Auditoría Frontend",
-    "frontend api audit": "Auditoría Frontend",
+    "frontend audit": "Auditoría API",
+    "frontend api audit": "Auditoría API",
     "api audit": "Auditoría API",
-    "openapi audit": "Auditoría OpenAPI",
+    "openapi audit": "Auditoría API",
+    "auditoría frontend": "Auditoría API",
+    "auditoria frontend": "Auditoría API",
+    "auditoría openapi": "Auditoría API",
+    "auditoria openapi": "Auditoría API",
   };
 
   return normalizedNames[rawName.toLowerCase()] || rawName;
+}
+
+export function getOpenAPIAuditName(openapiSchema) {
+  const title = String(openapiSchema?.info?.title || "").trim();
+  return normalizeAuditName(title || "Auditoría API");
 }
 
 export function normalizeToken(value) {

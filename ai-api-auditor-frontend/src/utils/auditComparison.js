@@ -89,6 +89,8 @@ function compareRecommendations(currentRecommendations, previousRecommendations)
 }
 
 function compareItems(currentItems, previousItems, getSignature, getLabel) {
+  // Agrupamos por firma normalizada para comparar cambios reales entre auditorías,
+  // no diferencias de formato ni duplicados generados por varios endpoints.
   const previousBySignature = groupItemsBySignature(previousItems, getSignature, getLabel);
   const currentBySignature = groupItemsBySignature(currentItems, getSignature, getLabel);
 

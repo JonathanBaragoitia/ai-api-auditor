@@ -1,7 +1,12 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+import json
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+MAX_EXAMPLE_SIZE_CHARS = 20000
 
 
 AuditStatus = Literal["pending", "processing", "completed", "failed"]
@@ -21,12 +26,38 @@ class StructuredIssue(BaseModel):
 
 class ManualAuditRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=150)
-    method: str = Field(..., examples=["GET", "POST", "PUT", "DELETE"])
-    path: str = Field(..., examples=["/users"])
-    description: str | None = None
+    method: str = Field(..., min_length=3, max_length=6, examples=["GET", "POST", "PUT", "DELETE"])
+    path: str = Field(..., min_length=1, max_length=500, examples=["/users"])
+    description: str | None = Field(default=None, max_length=5000)
     auth_required: bool = False
     request_example: dict[str, Any] | None = None
     response_example: dict[str, Any] | None = None
+
+    @field_validator("method")
+    @classmethod
+    def validate_method(cls, value: str) -> str:
+        method = value.strip().upper()
+        if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+            raise ValueError("Método HTTP no permitido para auditoría.")
+        return method
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        path = value.strip()
+        if not path.startswith("/"):
+            raise ValueError("La ruta debe empezar por '/'.")
+        return path
+
+    @field_validator("request_example", "response_example")
+    @classmethod
+    def validate_example_size(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        if value is None:
+            return value
+        # Limitamos ejemplos manuales para evitar payloads excesivos en DB, logs y prompts IA.
+        if len(json.dumps(value, ensure_ascii=False)) > MAX_EXAMPLE_SIZE_CHARS:
+            raise ValueError("El ejemplo supera el tamaño máximo permitido.")
+        return value
 
 
 class AuditAnalysis(BaseModel):
@@ -44,6 +75,11 @@ class OpenAPIAuditRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=150)
     openapi_schema: dict[str, Any]
     audit_mode: AuditMode = "enterprise"
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        return value.strip() or "Auditoría API"
 
 
 class AuditMetadataUpdate(BaseModel):

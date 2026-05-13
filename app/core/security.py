@@ -25,13 +25,20 @@ def create_access_token(subject: str) -> str:
     to_encode = {
         "sub": subject,
         "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "iss": settings.TOKEN_ISSUER,
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            issuer=settings.TOKEN_ISSUER,
+        )
         return payload
     except JWTError as exc:
         raise ValueError("Invalid token") from exc

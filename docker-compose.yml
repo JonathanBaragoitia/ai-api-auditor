@@ -6,35 +6,64 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-ai_api_auditor}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_api_auditor_password}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      app_network:
+        aliases:
+          - postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_api_auditor} -d ${POSTGRES_DB:-ai_api_auditor}"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 5s
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-ai_api_auditor}:${POSTGRES_PASSWORD:-ai_api_auditor_password}@postgres:5432/${POSTGRES_DB:-ai_api_auditor}
+      DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER:-ai_api_auditor}:${POSTGRES_PASSWORD:-ai_api_auditor_password}@postgres:5432/${POSTGRES_DB:-ai_api_auditor}"
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      TOKEN_ISSUER: ${TOKEN_ISSUER:-ai-api-auditor}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4173,http://127.0.0.1:4173}
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434/api/generate}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
       OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-60}
       MAX_OPENAPI_SIZE_CHARS: ${MAX_OPENAPI_SIZE_CHARS:-200000}
+      MAX_REQUEST_BODY_SIZE_CHARS: ${MAX_REQUEST_BODY_SIZE_CHARS:-250000}
       MAX_OPENAPI_ENDPOINTS: ${MAX_OPENAPI_ENDPOINTS:-50}
-    command: sh -c "python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $${PORT:-8000}"
+    command: |
+      sh -c 'python - <<"PY"
+      import socket
+      import time
+
+      host = "postgres"
+      port = 5432
+      print(f"Esperando PostgreSQL en {host}:{port}...")
+      for attempt in range(30):
+          try:
+              with socket.create_connection((host, port), timeout=3):
+                  print("PostgreSQL disponible para backend.")
+                  break
+          except OSError as exc:
+              print(f"PostgreSQL no disponible todavía ({attempt + 1}/30): {exc}")
+              time.sleep(2)
+      else:
+          raise SystemExit("PostgreSQL no estuvo disponible a tiempo.")
+      PY
+      python -m alembic upgrade head
+      uvicorn app.main:app --host 0.0.0.0 --port $${PORT:-8000}'
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - app_network
 
   frontend:
     build:
@@ -48,6 +77,12 @@ services:
       - "4173:4173"
     depends_on:
       - backend
+    networks:
+      - app_network
 
 volumes:
   postgres_data:
+
+networks:
+  app_network:
+    driver: bridge

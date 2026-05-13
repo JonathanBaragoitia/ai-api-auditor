@@ -218,6 +218,8 @@ function getPercentage(value, total) {
 }
 
 function getIssueCategoryCounts(audits) {
+  // El dashboard consolida issues globales y issues por endpoint porque las auditorías legacy
+  // pueden haber persistido solo el detalle granular de OpenAPI.
   return audits.reduce((acc, audit) => {
     const issues = [
       ...(Array.isArray(audit?.issues) ? audit.issues : []),
@@ -238,6 +240,8 @@ function formatScore(audit) {
 }
 
 function ComparisonList({ title, items, emptyText }) {
+  // La comparación prioriza lectura ejecutiva: se muestran los primeros hallazgos
+  // y se resume el resto para evitar paneles demasiado largos.
   const visibleItems = items.slice(0, 3);
   const hiddenCount = items.length - visibleItems.length;
 

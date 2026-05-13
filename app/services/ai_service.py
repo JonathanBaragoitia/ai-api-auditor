@@ -589,7 +589,7 @@ def analyze_with_ollama(prompt: str) -> dict:
         response.raise_for_status()
     except requests.RequestException as exc:
         logger.warning("Ollama request failed: %s", exc, exc_info=True)
-        raise OllamaAnalysisError(f"No se pudo conectar con Ollama: {exc}") from exc
+        raise OllamaAnalysisError("No se pudo conectar con Ollama.") from exc
 
     try:
         response_data = response.json()

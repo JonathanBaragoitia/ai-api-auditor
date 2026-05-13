@@ -56,6 +56,18 @@ def test_register_and_login_success():
     assert isinstance(login_response.json().get("access_token"), str)
 
 
+def test_register_rejects_invalid_email_and_short_password():
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/auth/register",
+            json={"email": "not-an-email", "password": "short"},
+        )
+
+    assert response.status_code == 422
+
+
 def test_login_with_wrong_password_returns_401():
     app.dependency_overrides[get_db] = override_get_db
 

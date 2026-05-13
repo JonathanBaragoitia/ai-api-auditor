@@ -7,6 +7,7 @@ import {
   formatSignedNumber,
   normalizeAuditName,
   normalizeDisplayScore,
+  getOpenAPIAuditName,
 } from "./display";
 
 describe("normalizeDisplayScore", () => {
@@ -39,8 +40,13 @@ describe("normalizeDisplayScore", () => {
   });
 
   it("normaliza nombres legacy de auditoría sin alterar nombres personalizados", () => {
-    expect(normalizeAuditName("Frontend Audit")).toBe("Auditoría Frontend");
-    expect(normalizeAuditName("OpenAPI Audit")).toBe("Auditoría OpenAPI");
+    expect(normalizeAuditName("Frontend Audit")).toBe("Auditoría API");
+    expect(normalizeAuditName("OpenAPI Audit")).toBe("Auditoría API");
     expect(normalizeAuditName("API pagos producción")).toBe("API pagos producción");
+  });
+
+  it("usa el title de OpenAPI como nombre de auditoría cuando existe", () => {
+    expect(getOpenAPIAuditName({ info: { title: "Pagos API" } })).toBe("Pagos API");
+    expect(getOpenAPIAuditName({ info: {} })).toBe("Auditoría API");
   });
 });

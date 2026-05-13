@@ -149,7 +149,7 @@ describe("HistoryList", () => {
       />,
     );
 
-    expect(screen.getByText("Auditoría Frontend")).toBeInTheDocument();
+    expect(screen.getByText("Auditoría API")).toBeInTheDocument();
     expect(screen.getByText("Auditoría personalizada cliente A")).toBeInTheDocument();
     expect(screen.queryByText("Frontend Audit")).not.toBeInTheDocument();
   });

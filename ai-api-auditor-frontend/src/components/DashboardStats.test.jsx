@@ -124,8 +124,7 @@ describe("DashboardStats", () => {
       />,
     );
 
-    expect(screen.getAllByText("Auditoría Frontend").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Auditoría OpenAPI").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auditoría API").length).toBeGreaterThan(0);
     expect(screen.queryByText("Frontend Audit")).not.toBeInTheDocument();
   });
 

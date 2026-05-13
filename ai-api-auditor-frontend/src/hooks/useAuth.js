@@ -5,13 +5,15 @@ import { apiFetch } from "../utils/api";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export function useAuth() {
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [token, setToken] = useState(sessionStorage.getItem("token"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const saveToken = (accessToken) => {
     setToken(accessToken);
-    localStorage.setItem("token", accessToken);
+    // Evitamos persistencia indefinida del JWT en el navegador; para producción,
+    // el siguiente paso natural sería migrar a cookies HttpOnly + SameSite.
+    sessionStorage.setItem("token", accessToken);
   };
 
   const login = async ({ email, password }) => {
@@ -65,7 +67,7 @@ export function useAuth() {
   const logout = useCallback(() => {
     setToken(null);
     setError(null);
-    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
   }, []);
 
   return {

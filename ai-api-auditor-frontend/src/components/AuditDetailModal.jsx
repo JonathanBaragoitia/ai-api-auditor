@@ -33,7 +33,7 @@ function AuditDetailModal({
   const issues = Array.isArray(audit?.issues) ? audit.issues : [];
   const endpoints = Array.isArray(audit?.endpoints) ? audit.endpoints : [];
   const recommendations = collectAllRecommendations(audit, endpoints);
-  const auditType = audit?.method === "OPENAPI" ? "Auditoría OpenAPI" : "Auditoría manual";
+  const auditType = audit?.method === "OPENAPI" ? "Auditoría API" : "Auditoría manual";
   const score = formatScoreValue(audit?.average_score ?? audit?.score);
   const riskLevel = audit?.global_risk_level || audit?.risk_level;
   const endpointCount = audit?.total_endpoints ?? (endpoints.length || "-");

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "../utils/api";
+import { getOpenAPIAuditName } from "../utils/display";
 import { downloadAuditExport, openPrintableAuditReport } from "../utils/report";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -58,13 +59,14 @@ export function useAudits(token, onLogout) {
 
     try {
       const parsed = JSON.parse(input);
+      const auditName = getOpenAPIAuditName(parsed);
 
       const data = await apiFetch(
         `${API_BASE_URL}/audits/openapi`,
         {
           method: "POST",
           body: JSON.stringify({
-            name: "Auditoría Frontend",
+            name: auditName,
             openapi_schema: parsed,
             audit_mode: auditMode,
           }),
@@ -87,7 +89,7 @@ export function useAudits(token, onLogout) {
       setError(message);
       setResult({
         id: backendError?.audit_id,
-        name: "Auditoría Frontend",
+        name: getFailedAuditName(input),
         status: backendError?.status || "failed",
         error_message: message,
         audit_mode: auditMode,
@@ -160,4 +162,12 @@ export function useAudits(token, onLogout) {
     exportPdfReport,
     clearAuditState,
   };
+}
+
+function getFailedAuditName(input) {
+  try {
+    return getOpenAPIAuditName(JSON.parse(input));
+  } catch {
+    return "Auditoría API";
+  }
 }

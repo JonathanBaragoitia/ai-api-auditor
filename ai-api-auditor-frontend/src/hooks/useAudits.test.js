@@ -19,7 +19,7 @@ describe("useAudits", () => {
       return new Response(
         JSON.stringify({
           id: 1,
-          name: "Auditoría Frontend",
+          name: "Pagos API",
           total_endpoints: 1,
           average_score: 80,
           global_risk_level: "low",
@@ -35,14 +35,14 @@ describe("useAudits", () => {
     const { result, unmount } = renderHook(() => useAudits("token", vi.fn()));
 
     await act(async () => {
-      await result.current.analyzeOpenAPI('{"openapi":"3.0.0","paths":{}}', "documentation");
+      await result.current.analyzeOpenAPI('{"openapi":"3.0.0","info":{"title":"Pagos API"},"paths":{}}', "documentation");
     });
 
     await waitFor(() => expect(result.current.result?.audit_mode).toBe("documentation"));
 
     const postCall = fetchMock.mock.calls.find(([url, options]) => url.endsWith("/audits/openapi") && options.method === "POST");
     expect(JSON.parse(postCall[1].body).audit_mode).toBe("documentation");
-    expect(JSON.parse(postCall[1].body).name).toBe("Auditoría Frontend");
+    expect(JSON.parse(postCall[1].body).name).toBe("Pagos API");
     unmount();
   });
 

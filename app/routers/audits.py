@@ -56,6 +56,10 @@ def error_detail(code: str, message: str, audit: Audit | None = None) -> dict:
     }
 
 
+def safe_ai_error_message() -> str:
+    return "No se pudo completar el análisis IA. Revisa disponibilidad de Ollama y vuelve a intentarlo."
+
+
 def parse_tags(tags: str | None) -> list[str]:
     if not tags:
         return []
@@ -325,9 +329,10 @@ def create_manual_ai_audit(
         analysis = analyze_with_ollama(prompt)
     except OllamaAnalysisError as exc:
         audit.status = "failed"
-        audit.error_message = str(exc)
+        audit.error_message = safe_ai_error_message()
         db.commit()
         logger.info("audit failed: id=%s reason=%s", audit.id, audit.error_message)
+        logger.debug("manual AI audit provider error", exc_info=True)
         raise HTTPException(
             status_code=502,
             detail=error_detail("AI_ANALYSIS_FAILED", audit.error_message, audit),
@@ -406,16 +411,17 @@ def create_openapi_audit(
         )
     except OllamaAnalysisError as exc:
         audit.status = "failed"
-        audit.error_message = str(exc)
+        audit.error_message = safe_ai_error_message()
         db.commit()
         logger.info("audit failed: id=%s reason=%s", audit.id, audit.error_message)
+        logger.debug("OpenAPI AI audit provider error", exc_info=True)
         raise HTTPException(
             status_code=502,
             detail=error_detail("AI_ANALYSIS_FAILED", audit.error_message, audit),
         ) from exc
     except Exception as exc:
         audit.status = "failed"
-        audit.error_message = str(exc) or "No se pudo completar la auditoría OpenAPI."
+        audit.error_message = "No se pudo completar la auditoría OpenAPI."
         db.commit()
         logger.exception("audit failed: id=%s", audit.id)
         raise HTTPException(

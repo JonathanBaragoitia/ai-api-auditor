@@ -78,6 +78,8 @@ def test_health_returns_ok():
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
 
 
 def test_create_manual_audit_success():
@@ -96,6 +98,22 @@ def test_create_manual_audit_success():
     assert data["path"] == "/users"
     assert "score" in data
     assert data["status"] == "completed"
+
+
+def test_rejects_request_body_that_exceeds_global_limit(monkeypatch):
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as client:
+        headers = get_auth_headers(client)
+        monkeypatch.setattr(settings, "MAX_REQUEST_BODY_SIZE_CHARS", 50)
+        response = client.post(
+            "/audits/manual",
+            json=manual_audit_payload("Auditoría con payload grande"),
+            headers=headers,
+        )
+
+    assert response.status_code == 413
+    assert "tamaño máximo" in response.json()["detail"]
 
 
 def test_manual_audit_returns_structured_issue():

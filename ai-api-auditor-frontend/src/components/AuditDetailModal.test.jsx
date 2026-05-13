@@ -63,7 +63,7 @@ describe("AuditDetailModal", () => {
     render(<AuditDetailModal audit={audit} onClose={vi.fn()} {...helpers} />);
 
     expect(screen.getAllByText("Auditoría usuarios").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Auditoría OpenAPI").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auditoría API").length).toBeGreaterThan(0);
     expect(screen.getByText("75")).toBeInTheDocument();
     expect(screen.getAllByText("Diseño REST").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Resumen" })).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe("AuditDetailModal", () => {
   it("normaliza nombre legacy en cabecera y resumen", () => {
     render(<AuditDetailModal audit={{ ...audit, name: "Frontend Audit" }} onClose={vi.fn()} {...helpers} />);
 
-    expect(screen.getAllByText("Auditoría Frontend").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auditoría API").length).toBeGreaterThan(0);
     expect(screen.queryByText("Frontend Audit")).not.toBeInTheDocument();
   });
 
