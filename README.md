@@ -90,7 +90,7 @@ ai-api-auditor/
 6. La auditoría se persiste asociada al usuario autenticado.
 7. El frontend muestra resumen ejecutivo, dashboard, historial, detalle por endpoint y exportaciones.
 
-## Cómo Ejecutar en Local
+## Ejecutar Local Sin Docker
 
 ### Requisitos
 
@@ -116,6 +116,11 @@ Backend:
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
 Por defecto se usa SQLite con `DATABASE_URL=sqlite:///./ai_api_auditor.db`.
+Puedes usar PostgreSQL local cambiando `DATABASE_URL`, por ejemplo:
+
+```env
+DATABASE_URL=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@localhost:5432/ai_api_auditor
+```
 
 ### Frontend
 
@@ -161,6 +166,12 @@ Servicios:
 
 Docker Compose levanta PostgreSQL, espera a que esté saludable y ejecuta `python -m alembic upgrade head` antes de iniciar Uvicorn.
 
+La URL de conexión del backend se construye automáticamente dentro de Compose con `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD`:
+
+```text
+postgresql+psycopg2://<POSTGRES_USER>:<POSTGRES_PASSWORD>@postgres:5432/<POSTGRES_DB>
+```
+
 Ollama no se levanta dentro de Docker Compose. Debe correr localmente; el backend en Docker usa `http://host.docker.internal:11434/api/generate`.
 
 ## Variables de Entorno
@@ -190,7 +201,8 @@ Docker Compose con PostgreSQL:
 POSTGRES_DB=ai_api_auditor
 POSTGRES_USER=ai_api_auditor
 POSTGRES_PASSWORD=ai_api_auditor_password
-DATABASE_URL_DOCKER=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@postgres:5432/ai_api_auditor
+# Compose inyecta en backend:
+# DATABASE_URL=postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@postgres:5432/ai_api_auditor
 ```
 
 Frontend (`ai-api-auditor-frontend/.env`):
@@ -207,6 +219,12 @@ Aplicar migraciones:
 
 ```bash
 python -m alembic upgrade head
+```
+
+Aplicar migraciones dentro del backend Docker:
+
+```bash
+docker compose run --rm backend python -m alembic upgrade head
 ```
 
 Ver migración actual:

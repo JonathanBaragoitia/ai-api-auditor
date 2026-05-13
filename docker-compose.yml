@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql+psycopg2://ai_api_auditor:ai_api_auditor_password@postgres:5432/ai_api_auditor}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-ai_api_auditor}:${POSTGRES_PASSWORD:-ai_api_auditor_password}@postgres:5432/${POSTGRES_DB:-ai_api_auditor}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4173,http://127.0.0.1:4173}
